@@ -6,8 +6,6 @@ import {
   fetchUsers,
 } from "@/server/queries";
 
-export const dynamic = "force-dynamic";
-
 const VALID_ZOOMS: Zoom[] = ["day", "week", "month", "quarter"];
 
 export default async function GanttPage({

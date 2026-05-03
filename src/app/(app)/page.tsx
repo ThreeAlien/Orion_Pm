@@ -3,8 +3,6 @@ import { fetchTasks, fetchProjects, fetchUsers } from "@/server/queries";
 import { computeDashboardStats } from "@/lib/data";
 import { auth } from "@/auth";
 
-export const dynamic = "force-dynamic";
-
 export default async function DashboardPage() {
   const [tasks, projects, users, session] = await Promise.all([
     fetchTasks(),

@@ -12,8 +12,6 @@ import type { ViewProjectDetail } from "@/server/queries";
 import type { ProjectStatus, ViewUser } from "@/lib/data";
 import { resolveProjectColor } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
-
 const statusMap: Record<ProjectStatus, { label: string; bg: string; dot: string }> = {
   PLANNING: { label: "規劃中", bg: "bg-blue/[.12]", dot: "bg-blue" },
   PAUSED: { label: "暫停", bg: "bg-orange/[.13]", dot: "bg-orange" },

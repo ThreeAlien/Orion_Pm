@@ -1,8 +1,6 @@
 import { CalendarView } from "@/components/calendar-view";
 import { fetchCalendarTasks, fetchCalendarRangeTasks } from "@/server/queries";
 
-export const dynamic = "force-dynamic";
-
 export default async function CalendarPage({
   searchParams,
 }: {

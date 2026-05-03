@@ -6,8 +6,6 @@ import {
 } from "@/server/queries";
 import { auth } from "@/auth";
 
-export const dynamic = "force-dynamic";
-
 export default async function DocumentsPage() {
   const [documents, users, projects, session] = await Promise.all([
     fetchDocuments(),
