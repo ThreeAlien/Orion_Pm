@@ -1,0 +1,214 @@
+// Orion PM 資料模型
+// 對應 Notion Orion 三 db（任務 / 專案 / 文件）+ 加任務階層 + 依賴鏈
+// docs: prisma/README.md（之後寫）
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== Enums ====================
+
+enum TaskStatus {
+  TODO
+  DISCUSSING
+  ON_HOLD
+  IN_PROGRESS
+  WAITING_REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ProjectStatus {
+  PLANNING
+  PAUSED
+  IN_PROGRESS
+  DONE
+}
+
+enum DocType {
+  MEETING
+  RESEARCH
+  DEV_NOTE
+  PRODUCT
+  TEST
+  TEAM_GUIDE
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// ==================== Core ====================
+
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  name          String
+  avatarUrl     String?
+  image         String?
+  // Auth.js v5 fields
+  emailVerified DateTime?
+
+  ownedProjects Project[]       @relation("ProjectOwner")
+  memberOf      ProjectMember[]
+  assignedTasks Task[]          @relation("Assignee")
+  authoredDocs  Document[]      @relation("DocAuthor")
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([email])
+}
+
+model Project {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  /// 顯示用色票 — red / green / orange / purple / blue / pink / teal
+  color       String            @default("blue")
+  status      ProjectStatus     @default(PLANNING)
+  startDate   DateTime?
+  endDate     DateTime?
+  fileUrl     String?
+
+  ownerId     String
+  owner       User              @relation("ProjectOwner", fields: [ownerId], references: [id])
+
+  members     ProjectMember[]
+  tasks       Task[]
+  documents   ProjectDocument[]
+
+  archived    Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status, startDate])
+  @@index([ownerId])
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  role      MemberRole @default(MEMBER)
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt  DateTime   @default(now())
+
+  @@id([projectId, userId])
+  @@index([userId])
+}
+
+model Task {
+  id           String           @id @default(cuid())
+  title        String
+  description  String?
+  status       TaskStatus       @default(TODO)
+  priority     TaskPriority     @default(MEDIUM)
+  startDate    DateTime?
+  dueDate      DateTime?
+  completedAt  DateTime?
+  archived     Boolean          @default(false)
+
+  projectId    String?
+  project      Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  assigneeId   String?
+  assignee     User?            @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  // 任務階層（Parent ↔ Sub-task，self-relation）
+  parentTaskId String?
+  parentTask   Task?            @relation("Subtask", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  subtasks     Task[]           @relation("Subtask")
+
+  // 任務依賴（Blocking ↔ Blocked by，via TaskDependency）
+  blocking     TaskDependency[] @relation("Blocker")
+  blockedBy    TaskDependency[] @relation("Blocked")
+
+  documents    TaskDocument[]
+
+  /// 看板手動排序（同 status 內順序），float 便於插入時不重排
+  position     Float            @default(0)
+
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([projectId, status])
+  @@index([assigneeId, dueDate])
+  @@index([parentTaskId])
+  @@index([status, position])
+}
+
+model TaskDependency {
+  blockerId String
+  blockedId String
+
+  blocker   Task   @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   Task   @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+// ==================== Documents ====================
+
+model Document {
+  id          String            @id @default(cuid())
+  name        String
+  docType     DocType
+  date        DateTime?
+  contentUrl  String?
+  /// rich text body（之後可改 jsonb 接 Tiptap / Lexical）
+  body        String?
+
+  authorId    String?
+  author      User?             @relation("DocAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  tasks       TaskDocument[]
+  projects    ProjectDocument[]
+
+  archived    Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([docType, date])
+  @@index([authorId])
+}
+
+model TaskDocument {
+  taskId     String
+  documentId String
+
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, documentId])
+  @@index([documentId])
+}
+
+model ProjectDocument {
+  projectId  String
+  documentId String
+
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, documentId])
+  @@index([documentId])
+}
