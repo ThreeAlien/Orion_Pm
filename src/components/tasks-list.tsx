@@ -1,16 +1,19 @@
 // Tasks 列表頁 — 預設按 status 分組；點 column header 切到 flat sort 模式
+// 點任務 row 開 TaskDrawer 看 / 改完整資訊（與 kanban 共用 drawer）
 "use client";
 
 import { useState } from "react";
 import {
   type ViewTask,
   type ViewProject,
+  type ViewUser,
   type TaskStatus,
   type TaskPriority,
   kanbanColumns,
   projectChipStyle,
 } from "@/lib/data";
 import { ViewToggle } from "./view-toggle";
+import { TaskDrawer } from "./kanban-board";
 
 const priorityMap: Record<TaskPriority, { label: string; color: string }> = {
   LOW: { label: "低", color: "text-text-faint" },
@@ -42,13 +45,16 @@ type SortDir = "asc" | "desc";
 export function TasksList({
   tasks,
   projects,
+  users,
 }: {
   tasks: ViewTask[];
   projects: ViewProject[];
+  users: ViewUser[];
 }) {
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]));
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [openTask, setOpenTask] = useState<ViewTask | null>(null);
 
   function clickHeader(key: SortKey) {
     if (sortKey === key) {
@@ -174,6 +180,7 @@ export function TasksList({
                       task={t}
                       idx={i + 1}
                       projectMap={projectMap}
+                      onOpen={() => setOpenTask(t)}
                     />
                   ))}
                 </div>
@@ -188,12 +195,20 @@ export function TasksList({
                   task={t}
                   idx={i + 1}
                   projectMap={projectMap}
+                  onOpen={() => setOpenTask(t)}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <TaskDrawer
+        task={openTask}
+        projects={projects}
+        users={users}
+        onClose={() => setOpenTask(null)}
+      />
     </div>
   );
 }
@@ -255,30 +270,31 @@ function Row({
   task,
   idx,
   projectMap,
+  onOpen,
 }: {
   task: ViewTask;
   idx: number;
   projectMap: Record<string, ViewProject>;
+  onOpen: () => void;
 }) {
   const project = task.projectId ? projectMap[task.projectId] : undefined;
   return (
-    <div className="grid grid-cols-[40px_1fr_140px_120px_100px_120px_110px] gap-3 px-3 py-3 items-center text-sm border-b border-rule hover:bg-rule-soft cursor-pointer">
+    <div
+      onClick={onOpen}
+      className="grid grid-cols-[40px_1fr_140px_120px_100px_120px_110px] gap-3 px-3 h-12 items-center text-sm border-b border-rule hover:bg-rule-soft cursor-pointer"
+    >
       <div className="text-text-faint tabular text-xs">
         {String(idx).padStart(3, "0")}
       </div>
-      <div>
+      <div className="min-w-0">
         <div
-          className={`font-semibold ${
+          className={`font-semibold truncate ${
             task.status === "DONE" ? "text-text-dim" : ""
           }`}
+          title={task.description ?? task.title}
         >
           {task.title}
         </div>
-        {task.description && (
-          <div className="text-xs text-text-dim mt-0.5 truncate max-w-[600px]">
-            {task.description}
-          </div>
-        )}
       </div>
       <div>
         {project ? (
