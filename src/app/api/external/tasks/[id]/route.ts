@@ -11,6 +11,16 @@ import { checkBearer } from "@/lib/external-auth";
 
 const Body = z.object({
   assigneeEmail: z.email().nullable(),
+  status: z
+    .enum([
+      "TODO",
+      "DISCUSSING",
+      "ON_HOLD",
+      "IN_PROGRESS",
+      "WAITING_REVIEW",
+      "DONE",
+    ])
+    .optional(),
 });
 
 export async function PATCH(
@@ -64,7 +74,10 @@ export async function PATCH(
 
   await db.task.update({
     where: { id },
-    data: { assigneeId },
+    data: {
+      assigneeId,
+      ...(parsed.data.status ? { status: parsed.data.status } : {}),
+    },
   });
 
   revalidatePath("/");

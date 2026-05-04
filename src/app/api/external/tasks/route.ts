@@ -14,6 +14,16 @@ const Body = z.object({
   description: z.string().max(2000).optional().nullable(),
   assigneeEmail: z.email().optional().nullable(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
+  status: z
+    .enum([
+      "TODO",
+      "DISCUSSING",
+      "ON_HOLD",
+      "IN_PROGRESS",
+      "WAITING_REVIEW",
+      "DONE",
+    ])
+    .optional(),
   sourceRef: z.string().max(200).optional().nullable(),
 });
 
@@ -60,9 +70,11 @@ export async function POST(request: Request) {
       .filter(Boolean)
       .join("\n\n") || null;
 
-  // 算 position：放 TODO 列最末（跟 createTask server action 一致）
+  const finalStatus = data.status ?? "TODO";
+
+  // 算 position：放對應 status 列最末
   const last = await db.task.findFirst({
-    where: { status: "TODO", archived: false },
+    where: { status: finalStatus, archived: false },
     orderBy: { position: "desc" },
     select: { position: true },
   });
@@ -72,7 +84,7 @@ export async function POST(request: Request) {
     data: {
       title: data.title,
       description: composedDescription,
-      status: "TODO",
+      status: finalStatus,
       priority: data.priority ?? "MEDIUM",
       assigneeId,
       position: nextPosition,
