@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   });
   const projectId = project?.id ?? null;
 
-  // 凡 description 含 QA 標記或 orion-qa link 都納入清理
+  // 凡 description 含 QA 標記或 orion-qa link 都納入清理（含 archived 也帶進來重整）
   const tasks = await db.task.findMany({
     where: {
       OR: [
@@ -32,47 +32,84 @@ export async function POST(request: Request) {
         { description: { contains: "orion-qa.vercel.app/bugs/" } },
       ],
     },
-    select: { id: true, description: true, title: true, projectId: true },
+    select: {
+      id: true,
+      description: true,
+      title: true,
+      projectId: true,
+      archived: true,
+      createdAt: true,
+    },
   });
+
+  // group by bug id（從 description 抽 uuid）
+  const groups: Record<string, typeof tasks> = {};
+  const skipped: { id: string; reason: string }[] = [];
+  for (const t of tasks) {
+    const m = t.description?.match(
+      /bugs\/([a-f0-9-]{36})|Orion QA Bug #([a-f0-9-]{36})/i
+    );
+    const bugId = m?.[1] || m?.[2];
+    if (!bugId) {
+      skipped.push({ id: t.id, reason: "找不到 bug id" });
+      continue;
+    }
+    (groups[bugId] ||= []).push(t);
+  }
 
   let descRewritten = 0;
   let projectAssigned = 0;
-  const skipped: { id: string; reason: string }[] = [];
+  let dedupArchived = 0;
+  const keepIds: string[] = [];
 
-  for (const task of tasks) {
-    // 從 description 抽出 bug id（不論新舊格式）
-    const m = task.description?.match(/bugs\/([a-f0-9-]{36})|Orion QA Bug #([a-f0-9-]{36})/i);
-    const bugId = m?.[1] || m?.[2];
-    if (!bugId) {
-      skipped.push({ id: task.id, reason: "找不到 bug id" });
-      continue;
-    }
+  for (const [bugId, group] of Object.entries(groups)) {
+    // 同 bug id 多張 → keep 最早建的（id 最舊 = 通常 backfill 第一次 POST 那張），其他 archive
+    group.sort((a, b) => +a.createdAt - +b.createdAt);
+    const [keep, ...dups] = group;
+    keepIds.push(keep.id);
 
     const newDesc = `🔗 來源：https://orion-qa.vercel.app/bugs/${bugId}`;
-    const needDescUpdate = task.description !== newDesc;
-    const needProjectUpdate = projectId && task.projectId !== projectId;
+    const needDesc = keep.description !== newDesc;
+    const needProject = projectId && keep.projectId !== projectId;
+    const needUnarchive = keep.archived === true;
 
-    if (!needDescUpdate && !needProjectUpdate) continue;
+    if (needDesc || needProject || needUnarchive) {
+      await db.task.update({
+        where: { id: keep.id },
+        data: {
+          ...(needDesc ? { description: newDesc } : {}),
+          ...(needProject ? { projectId } : {}),
+          ...(needUnarchive ? { archived: false } : {}),
+        },
+      });
+      if (needDesc) descRewritten++;
+      if (needProject) projectAssigned++;
+    }
 
-    await db.task.update({
-      where: { id: task.id },
-      data: {
-        ...(needDescUpdate ? { description: newDesc } : {}),
-        ...(needProjectUpdate ? { projectId } : {}),
-      },
-    });
-    if (needDescUpdate) descRewritten++;
-    if (needProjectUpdate) projectAssigned++;
+    // archive 重複的
+    for (const dup of dups) {
+      if (!dup.archived) {
+        await db.task.update({
+          where: { id: dup.id },
+          data: { archived: true },
+        });
+        dedupArchived++;
+      }
+    }
   }
 
   revalidatePath("/");
   revalidatePath("/tasks");
+  revalidatePath("/archive");
 
   return NextResponse.json({
     ok: true,
     scanned: tasks.length,
+    uniqueBugs: Object.keys(groups).length,
+    keptTaskIds: keepIds,
     descRewritten,
     projectAssigned,
+    dedupArchived,
     targetProjectFound: !!projectId,
     skipped,
   });
