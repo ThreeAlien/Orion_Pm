@@ -25,6 +25,8 @@ const Body = z.object({
     ])
     .optional(),
   sourceRef: z.string().max(200).optional().nullable(),
+  // 給外部系統指定要歸到哪個 project（依名稱 lookup，找不到就 null 不擋）
+  projectName: z.string().max(120).optional().nullable(),
 });
 
 export async function POST(request: Request) {
@@ -48,6 +50,15 @@ export async function POST(request: Request) {
 
   // 找不到 user 時自動建（trusted external call）
   const assigneeId = await resolveAssigneeId(data.assigneeEmail);
+
+  let projectId: string | null = null;
+  if (data.projectName) {
+    const project = await db.project.findFirst({
+      where: { name: data.projectName, archived: false },
+      select: { id: true },
+    });
+    projectId = project?.id ?? null;
+  }
 
   // 來源標記塞 description prefix（之後在 PM 卡片可看到「[來源] ...」）
   const composedDescription =
@@ -75,6 +86,7 @@ export async function POST(request: Request) {
       status: finalStatus,
       priority: data.priority ?? "MEDIUM",
       assigneeId,
+      projectId,
       position: nextPosition,
     },
   });

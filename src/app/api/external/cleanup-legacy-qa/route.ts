@@ -1,11 +1,13 @@
-// 一次性 cleanup：把所有舊格式 description（[來源] Orion QA Bug #xxx + 整段 markdown）
-// 替換為新格式（🔗 來源：https://orion-qa.vercel.app/bugs/<id> 一行）。
-// 跑完應該所有 QA 同步來的卡都統一短描述。
+// 一次性 cleanup：
+// 1. 舊 description（[來源] Orion QA Bug #xxx + markdown）→ 新短連結
+// 2. 所有 QA 同步來的卡（description 含 orion-qa.vercel.app 或舊「Orion QA Bug」）統一掛到「CMS 網站模組」專案
 
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { checkBearer } from "@/lib/external-auth";
+
+const QA_PROJECT_NAME = "CMS 網站模組";
 
 export async function POST(request: Request) {
   const auth = checkBearer(request);
@@ -16,29 +18,51 @@ export async function POST(request: Request) {
     );
   }
 
+  const project = await db.project.findFirst({
+    where: { name: QA_PROJECT_NAME, archived: false },
+    select: { id: true },
+  });
+  const projectId = project?.id ?? null;
+
+  // 凡 description 含 QA 標記或 orion-qa link 都納入清理
   const tasks = await db.task.findMany({
-    where: { description: { contains: "[來源] Orion QA Bug #" } },
-    select: { id: true, description: true, title: true },
+    where: {
+      OR: [
+        { description: { contains: "[來源] Orion QA Bug #" } },
+        { description: { contains: "orion-qa.vercel.app/bugs/" } },
+      ],
+    },
+    select: { id: true, description: true, title: true, projectId: true },
   });
 
-  let updated = 0;
+  let descRewritten = 0;
+  let projectAssigned = 0;
   const skipped: { id: string; reason: string }[] = [];
 
   for (const task of tasks) {
-    const m = task.description?.match(
-      /Orion QA Bug #([a-f0-9-]{36})/i
-    );
-    if (!m) {
+    // 從 description 抽出 bug id（不論新舊格式）
+    const m = task.description?.match(/bugs\/([a-f0-9-]{36})|Orion QA Bug #([a-f0-9-]{36})/i);
+    const bugId = m?.[1] || m?.[2];
+    if (!bugId) {
       skipped.push({ id: task.id, reason: "找不到 bug id" });
       continue;
     }
-    const bugId = m[1];
+
     const newDesc = `🔗 來源：https://orion-qa.vercel.app/bugs/${bugId}`;
+    const needDescUpdate = task.description !== newDesc;
+    const needProjectUpdate = projectId && task.projectId !== projectId;
+
+    if (!needDescUpdate && !needProjectUpdate) continue;
+
     await db.task.update({
       where: { id: task.id },
-      data: { description: newDesc },
+      data: {
+        ...(needDescUpdate ? { description: newDesc } : {}),
+        ...(needProjectUpdate ? { projectId } : {}),
+      },
     });
-    updated++;
+    if (needDescUpdate) descRewritten++;
+    if (needProjectUpdate) projectAssigned++;
   }
 
   revalidatePath("/");
@@ -47,7 +71,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     scanned: tasks.length,
-    updated,
+    descRewritten,
+    projectAssigned,
+    targetProjectFound: !!projectId,
     skipped,
   });
 }
