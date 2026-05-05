@@ -21,6 +21,7 @@ const Body = z.object({
       "DONE",
     ])
     .optional(),
+  description: z.string().max(2000).optional().nullable(),
 });
 
 export async function PATCH(
@@ -64,6 +65,9 @@ export async function PATCH(
     data: {
       assigneeId,
       ...(parsed.data.status ? { status: parsed.data.status } : {}),
+      ...(parsed.data.description !== undefined
+        ? { description: parsed.data.description?.trim() || null }
+        : {}),
     },
   });
 
