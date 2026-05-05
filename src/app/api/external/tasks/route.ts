@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { checkBearer } from "@/lib/external-auth";
+import { checkBearer, resolveAssigneeId } from "@/lib/external-auth";
 
 const Body = z.object({
   title: z.string().trim().min(1).max(200),
@@ -46,20 +46,8 @@ export async function POST(request: Request) {
   }
   const data = parsed.data;
 
-  let assigneeId: string | null = null;
-  if (data.assigneeEmail) {
-    const user = await db.user.findUnique({
-      where: { email: data.assigneeEmail },
-      select: { id: true },
-    });
-    if (!user) {
-      return NextResponse.json(
-        { ok: false, error: `查無此 user: ${data.assigneeEmail}` },
-        { status: 404 }
-      );
-    }
-    assigneeId = user.id;
-  }
+  // 找不到 user 時自動建（trusted external call）
+  const assigneeId = await resolveAssigneeId(data.assigneeEmail);
 
   // 來源標記塞 description prefix（之後在 PM 卡片可看到「[來源] ...」）
   const composedDescription =

@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { checkBearer } from "@/lib/external-auth";
+import { checkBearer, resolveAssigneeId } from "@/lib/external-auth";
 
 const Body = z.object({
   assigneeEmail: z.email().nullable(),
@@ -57,20 +57,7 @@ export async function PATCH(
     );
   }
 
-  let assigneeId: string | null = null;
-  if (parsed.data.assigneeEmail) {
-    const user = await db.user.findUnique({
-      where: { email: parsed.data.assigneeEmail },
-      select: { id: true },
-    });
-    if (!user) {
-      return NextResponse.json(
-        { ok: false, error: `查無此 user: ${parsed.data.assigneeEmail}` },
-        { status: 404 }
-      );
-    }
-    assigneeId = user.id;
-  }
+  const assigneeId = await resolveAssigneeId(parsed.data.assigneeEmail);
 
   await db.task.update({
     where: { id },
