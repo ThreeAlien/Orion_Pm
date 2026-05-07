@@ -1,6 +1,10 @@
-// 外部系統改 PM 任務卡的 assignee（單向 sync）。
+// 外部系統改 PM 任務卡（單向 sync）。
 // 認證：Authorization: Bearer <EXTERNAL_API_KEY>
-// Body: { assigneeEmail: string | null }   // null = 拔掉處理人
+// Body 各欄位皆可選：
+//   - assigneeEmail: string | null   // null = 拔掉處理人
+//   - status: TaskStatus
+//   - description: string | null
+//   - archived: boolean              // QA 端封存 / 還原 bug 時帶過來
 // 回傳：200 { ok: true } / 400 / 401 / 404
 
 import { db } from "@/lib/db";
@@ -10,7 +14,7 @@ import { revalidatePath } from "next/cache";
 import { checkBearer, resolveAssigneeId } from "@/lib/external-auth";
 
 const Body = z.object({
-  assigneeEmail: z.email().nullable(),
+  assigneeEmail: z.email().nullable().optional(),
   status: z
     .enum([
       "TODO",
@@ -22,6 +26,7 @@ const Body = z.object({
     ])
     .optional(),
   description: z.string().max(2000).optional().nullable(),
+  archived: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -58,17 +63,28 @@ export async function PATCH(
     );
   }
 
-  const assigneeId = await resolveAssigneeId(parsed.data.assigneeEmail);
+  // assigneeEmail undefined = 不動；null = 拔掉；string = 解析成 id
+  const data: Record<string, unknown> = {};
+  if (parsed.data.assigneeEmail !== undefined) {
+    data.assigneeId = await resolveAssigneeId(parsed.data.assigneeEmail);
+  }
+  if (parsed.data.status) {
+    data.status = parsed.data.status;
+  }
+  if (parsed.data.description !== undefined) {
+    data.description = parsed.data.description?.trim() || null;
+  }
+  if (parsed.data.archived !== undefined) {
+    data.archived = parsed.data.archived;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ ok: true });
+  }
 
   await db.task.update({
     where: { id },
-    data: {
-      assigneeId,
-      ...(parsed.data.status ? { status: parsed.data.status } : {}),
-      ...(parsed.data.description !== undefined
-        ? { description: parsed.data.description?.trim() || null }
-        : {}),
-    },
+    data,
   });
 
   revalidatePath("/");
