@@ -1,4 +1,5 @@
 import { GanttView, type Zoom } from "@/components/gantt";
+import { auth } from "@/auth";
 import {
   fetchGanttProjects,
   fetchGanttTasks,
@@ -19,11 +20,13 @@ export default async function GanttPage({
     ? (params.zoom as Zoom)
     : "week";
 
-  const [projects, allTasks, users] = await Promise.all([
+  const [projects, allTasks, users, session] = await Promise.all([
     fetchGanttProjects(),
     fetchTasks(),
     fetchUsers(),
+    auth(),
   ]);
+  const currentUserId = session?.user?.id;
 
   if (isTaskLevel) {
     const projectId =
@@ -37,6 +40,7 @@ export default async function GanttPage({
         tasks={tasks}
         viewTasks={allTasks}
         users={users}
+        currentUserId={currentUserId}
         selectedProjectId={projectId}
       />
     );
@@ -49,6 +53,7 @@ export default async function GanttPage({
       projects={projects}
       viewTasks={allTasks}
       users={users}
+      currentUserId={currentUserId}
     />
   );
 }

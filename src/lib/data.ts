@@ -5,9 +5,10 @@ import type {
   TaskPriority,
   ProjectStatus,
   DocType,
+  ActivityField,
 } from "@/generated/prisma/client";
 
-export type { TaskStatus, TaskPriority, ProjectStatus, DocType };
+export type { TaskStatus, TaskPriority, ProjectStatus, DocType, ActivityField };
 
 /// 任何 hex 字串（#RRGGBB）或 8 個常用 named token
 export type ProjectColor = string;
@@ -64,8 +65,61 @@ export interface ViewTask {
   startDateIso?: string | null;
   dueDateIso?: string | null;
   subtasks?: { done: number; total: number };
+  checklist?: { done: number; total: number };
   hasDependency?: boolean;
+  commentCount?: number;
 }
+
+export interface ViewChecklistItem {
+  id: string;
+  content: string;
+  done: boolean;
+  position: number;
+}
+
+export interface ViewTaskRef {
+  id: string;
+  title: string;
+  status: TaskStatus;
+}
+
+export interface ViewDependencies {
+  /// 此任務被以下任務阻擋（要先完成）
+  blockedBy: ViewTaskRef[];
+  /// 此任務阻擋了以下任務
+  blocking: ViewTaskRef[];
+}
+
+// ==== 任務時間軸（留言 + 活動軌跡）====
+
+export interface TimelineAuthor {
+  /// null = 已從系統移除的使用者
+  id: string | null;
+  name: string;
+  initial: string;
+  gradient: AvatarGradient;
+}
+
+export interface ViewComment {
+  kind: "comment";
+  id: string;
+  body: string;
+  author: TimelineAuthor;
+  createdAtIso: string;
+  edited: boolean;
+}
+
+export interface ViewActivity {
+  kind: "activity";
+  id: string;
+  field: ActivityField;
+  fromValue: string | null;
+  toValue: string | null;
+  actor: TimelineAuthor;
+  createdAtIso: string;
+}
+
+export type ViewTimelineItem = ViewComment | ViewActivity;
 
 export interface DashboardStats {
   total: number;

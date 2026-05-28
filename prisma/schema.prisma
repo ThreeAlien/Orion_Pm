@@ -66,6 +66,8 @@ model User {
   memberOf      ProjectMember[]
   assignedTasks Task[]          @relation("Assignee")
   authoredDocs  Document[]      @relation("DocAuthor")
+  comments      Comment[]
+  activities    Activity[]
 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -140,6 +142,9 @@ model Task {
   blockedBy    TaskDependency[] @relation("Blocked")
 
   documents    TaskDocument[]
+  comments     Comment[]
+  activities   Activity[]
+  checklist    ChecklistItem[]
 
   /// 看板手動排序（同 status 內順序），float 便於插入時不重排
   position     Float            @default(0)
@@ -164,6 +169,68 @@ model TaskDependency {
 
   @@id([blockerId, blockedId])
   @@index([blockedId])
+}
+
+// ==================== Collaboration（留言 + 活動軌跡）====================
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // 作者離開系統 → 留言保留，顯示「已移除使用者」
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId, createdAt])
+}
+
+/// 自動記錄的欄位變更軌跡。fromValue / toValue 寫入當下的人類可讀字串（label / 名字 / 日期）
+model Activity {
+  id        String       @id @default(cuid())
+  field     ActivityField
+  fromValue String?
+  toValue   String?
+
+  taskId    String
+  task      Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  actorId   String?
+  actor     User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime     @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+enum ActivityField {
+  CREATED
+  STATUS
+  ASSIGNEE
+  PRIORITY
+  START_DATE
+  DUE_DATE
+}
+
+/// 任務內的輕量工作清單項（純文字 + 勾選），position 用 float 便於拖排插入不重排
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  content   String
+  done      Boolean  @default(false)
+  position  Float    @default(0)
+
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId, position])
 }
 
 // ==================== Documents ====================

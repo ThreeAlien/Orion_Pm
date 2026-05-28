@@ -10,6 +10,10 @@ import type {
   DuePillKind,
   ProjectStatus,
   DocType,
+  ViewTimelineItem,
+  TimelineAuthor,
+  ViewChecklistItem,
+  ViewDependencies,
 } from "@/lib/data";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -463,12 +467,16 @@ export async function fetchTasks(): Promise<ViewTask[]> {
       assignee: true,
       blockedBy: { take: 1, select: { blockerId: true } },
       subtasks: { select: { id: true, status: true } },
+      checklist: { select: { done: true } },
+      _count: { select: { comments: true } },
     },
   });
 
   return rows.map((t): ViewTask => {
     const subtaskTotal = t.subtasks.length;
     const subtaskDone = t.subtasks.filter((s) => s.status === "DONE").length;
+    const checklistTotal = t.checklist.length;
+    const checklistDone = t.checklist.filter((c) => c.done).length;
     return {
       id: t.id,
       title: t.title,
@@ -485,7 +493,115 @@ export async function fetchTasks(): Promise<ViewTask[]> {
       dueDateIso: t.dueDate ? t.dueDate.toISOString() : null,
       subtasks:
         subtaskTotal > 0 ? { done: subtaskDone, total: subtaskTotal } : undefined,
+      checklist:
+        checklistTotal > 0
+          ? { done: checklistDone, total: checklistTotal }
+          : undefined,
       hasDependency: t.blockedBy.length > 0,
+      commentCount: t._count.comments,
     };
   });
+}
+
+// 某任務的依賴：被誰阻擋（blockedBy）+ 阻擋了誰（blocking）
+export async function fetchTaskDependencies(
+  taskId: string
+): Promise<ViewDependencies> {
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    select: {
+      blockedBy: {
+        select: {
+          blocker: { select: { id: true, title: true, status: true } },
+        },
+      },
+      blocking: {
+        select: {
+          blocked: { select: { id: true, title: true, status: true } },
+        },
+      },
+    },
+  });
+  if (!task) return { blockedBy: [], blocking: [] };
+  return {
+    blockedBy: task.blockedBy.map((d) => ({
+      id: d.blocker.id,
+      title: d.blocker.title,
+      status: d.blocker.status,
+    })),
+    blocking: task.blocking.map((d) => ({
+      id: d.blocked.id,
+      title: d.blocked.title,
+      status: d.blocked.status,
+    })),
+  };
+}
+
+// 某任務的工作清單，依 position 正序
+export async function fetchTaskChecklist(
+  taskId: string
+): Promise<ViewChecklistItem[]> {
+  const items = await db.checklistItem.findMany({
+    where: { taskId },
+    orderBy: { position: "asc" },
+  });
+  return items.map((i) => ({
+    id: i.id,
+    content: i.content,
+    done: i.done,
+    position: i.position,
+  }));
+}
+
+// 某任務的留言 + 活動軌跡，合併後依時間正序（舊→新）排列
+export async function fetchTaskTimeline(
+  taskId: string
+): Promise<ViewTimelineItem[]> {
+  const [comments, activities] = await Promise.all([
+    db.comment.findMany({
+      where: { taskId },
+      include: { author: { select: { id: true, name: true } } },
+    }),
+    db.activity.findMany({
+      where: { taskId },
+      include: { actor: { select: { id: true, name: true } } },
+    }),
+  ]);
+
+  const commentItems: ViewTimelineItem[] = comments.map((c) => ({
+    kind: "comment",
+    id: c.id,
+    body: c.body,
+    author: toTimelineAuthor(c.author),
+    createdAtIso: c.createdAt.toISOString(),
+    edited: c.updatedAt.getTime() - c.createdAt.getTime() > 1000,
+  }));
+
+  const activityItems: ViewTimelineItem[] = activities.map((a) => ({
+    kind: "activity",
+    id: a.id,
+    field: a.field,
+    fromValue: a.fromValue,
+    toValue: a.toValue,
+    actor: toTimelineAuthor(a.actor),
+    createdAtIso: a.createdAt.toISOString(),
+  }));
+
+  return [...commentItems, ...activityItems].sort(
+    (a, b) => a.createdAtIso.localeCompare(b.createdAtIso)
+  );
+}
+
+function toTimelineAuthor(
+  u: { id: string; name: string } | null
+): TimelineAuthor {
+  if (!u) {
+    return { id: null, name: "已移除使用者", initial: "?", gradient: "y" };
+  }
+  return {
+    id: u.id,
+    name: u.name,
+    initial: u.name[0] ?? "?",
+    gradient: pickGradient(u.name),
+  };
 }

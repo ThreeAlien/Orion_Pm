@@ -50,6 +50,7 @@ export function GanttView({
   tasks: initialTasks,
   viewTasks,
   users,
+  currentUserId,
   selectedProjectId,
 }: {
   mode: Mode;
@@ -58,6 +59,7 @@ export function GanttView({
   tasks?: GanttTask[];
   viewTasks: ViewTask[];
   users: ViewUser[];
+  currentUserId?: string;
   selectedProjectId?: string;
 }) {
   const zoomCfg = ZOOM_CONFIG[zoom];
@@ -344,6 +346,8 @@ export function GanttView({
         task={selectedTask}
         projects={projectsForDrawer}
         users={users}
+        allTasks={viewTasks}
+        currentUserId={currentUserId}
         onClose={() => setSelectedTaskId(null)}
       />
     </div>

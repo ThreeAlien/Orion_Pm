@@ -5,6 +5,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
+  closestCenter,
   useDraggable,
   useDroppable,
   PointerSensor,
@@ -14,8 +15,31 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { updateTaskStatus, updateTask, deleteTask } from "@/server/actions";
+import {
+  updateTaskStatus,
+  updateTask,
+  deleteTask,
+  addComment,
+  updateComment,
+  deleteComment,
+  getTaskTimeline,
+  addChecklistItem,
+  toggleChecklistItem,
+  updateChecklistItem,
+  deleteChecklistItem,
+  reorderChecklistItem,
+  getTaskChecklist,
+  addDependency,
+  removeDependency,
+  getTaskDependencies,
+} from "@/server/actions";
 import {
   kanbanColumns,
   type ViewTask,
@@ -24,6 +48,11 @@ import {
   type ProjectColor,
   type TaskStatus,
   type TaskPriority,
+  type ViewTimelineItem,
+  type ViewActivity,
+  type TimelineAuthor,
+  type ViewChecklistItem,
+  type ViewDependencies,
   resolveProjectColor,
   projectChipStyle,
 } from "@/lib/data";
@@ -202,6 +231,8 @@ export function KanbanBoard({
           task={selected}
           projects={projects}
           users={users ?? []}
+          allTasks={tasks}
+          currentUserId={currentUserId}
           onClose={() => setSelectedId(null)}
         />
       </DndContext>
@@ -479,6 +510,16 @@ function TaskCardInner({
               ▦ {task.subtasks.done}/{task.subtasks.total}
             </span>
           )}
+          {task.checklist && (
+            <span className="text-[11px] text-text-faint inline-flex items-center gap-0.5">
+              ☑ {task.checklist.done}/{task.checklist.total}
+            </span>
+          )}
+          {task.commentCount != null && task.commentCount > 0 && (
+            <span className="text-[11px] text-text-faint inline-flex items-center gap-0.5">
+              💬 {task.commentCount}
+            </span>
+          )}
         </div>
         {task.due && task.duePill && (
           <DuePill kind={task.duePill}>{task.due}</DuePill>
@@ -494,11 +535,15 @@ export function TaskDrawer({
   task,
   projects,
   users,
+  allTasks,
+  currentUserId,
   onClose,
 }: {
   task: ViewTask | null;
   projects: ViewProject[];
   users: ViewUser[];
+  allTasks?: ViewTask[];
+  currentUserId?: string;
   onClose: () => void;
 }) {
   const open = task !== null;
@@ -516,6 +561,14 @@ export function TaskDrawer({
   const [dueDate, setDueDate] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // 留言 + 活動軌跡時間軸
+  const [timeline, setTimeline] = useState<ViewTimelineItem[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [commentBody, setCommentBody] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
+
   // sync from task
   useEffect(() => {
     if (task) {
@@ -529,6 +582,76 @@ export function TaskDrawer({
       setDueDate(task.dueDateIso ? task.dueDateIso.slice(0, 10) : "");
     }
   }, [task]);
+
+  // 開 drawer / 切換任務時載入時間軸
+  useEffect(() => {
+    if (!task) {
+      setTimeline([]);
+      return;
+    }
+    const taskId = task.id;
+    let cancelled = false;
+    setTimelineLoading(true);
+    setEditingId(null);
+    getTaskTimeline(taskId).then((items) => {
+      if (!cancelled) {
+        setTimeline(items);
+        setTimelineLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [task?.id]);
+
+  async function refetchTimeline() {
+    if (!task) return;
+    const items = await getTaskTimeline(task.id);
+    setTimeline(items);
+  }
+
+  function handlePostComment() {
+    if (!task || !commentBody.trim() || posting) return;
+    setPosting(true);
+    startTransition(async () => {
+      const res = await addComment({ taskId: task.id, body: commentBody });
+      if (res.ok) {
+        setCommentBody("");
+        await refetchTimeline();
+        router.refresh();
+      } else {
+        alert(res.error);
+      }
+      setPosting(false);
+    });
+  }
+
+  function handleSaveEdit() {
+    if (!editingId || !editBody.trim()) return;
+    const id = editingId;
+    startTransition(async () => {
+      const res = await updateComment({ id, body: editBody });
+      if (res.ok) {
+        setEditingId(null);
+        await refetchTimeline();
+      } else {
+        alert(res.error);
+      }
+    });
+  }
+
+  function handleDeleteComment(id: string) {
+    if (!confirm("確定刪除這則留言？")) return;
+    startTransition(async () => {
+      const res = await deleteComment(id);
+      if (res.ok) {
+        await refetchTimeline();
+        router.refresh();
+      } else {
+        alert(res.error);
+      }
+    });
+  }
 
   function handleSave() {
     if (!task) return;
@@ -672,6 +795,134 @@ export function TaskDrawer({
               <div className="text-xs text-text-faint pt-3 border-t border-rule">
                 💡 拖拉看板卡片直接改狀態，或在這裡編輯後按下方「儲存」。
               </div>
+
+              <DependencySection task={task} allTasks={allTasks ?? []} />
+
+              <ChecklistSection taskId={task.id} />
+
+              <div className="pt-4 border-t border-rule">
+                <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-3">
+                  留言與動態
+                </div>
+
+                {timelineLoading ? (
+                  <div className="text-sm text-text-faint py-2">載入中…</div>
+                ) : timeline.length === 0 ? (
+                  <div className="text-sm text-text-faint py-2">
+                    還沒有留言或動態，留下第一則討論吧。
+                  </div>
+                ) : (
+                  <ol className="space-y-3">
+                    {timeline.map((item) =>
+                      item.kind === "comment" ? (
+                        <li key={`c-${item.id}`} className="flex gap-2.5">
+                          <TimelineAvatar author={item.author} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold truncate">
+                                {item.author.name}
+                              </span>
+                              <span className="text-[11px] text-text-faint">
+                                {relTime(item.createdAtIso)}
+                                {item.edited && "・已編輯"}
+                              </span>
+                              {item.author.id != null &&
+                                item.author.id === currentUserId &&
+                                editingId !== item.id && (
+                                  <span className="ml-auto flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => {
+                                        setEditingId(item.id);
+                                        setEditBody(item.body);
+                                      }}
+                                      className="text-[11px] text-text-faint hover:text-blue cursor-pointer"
+                                    >
+                                      編輯
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteComment(item.id)}
+                                      className="text-[11px] text-text-faint hover:text-red cursor-pointer"
+                                    >
+                                      刪除
+                                    </button>
+                                  </span>
+                                )}
+                            </div>
+                            {editingId === item.id ? (
+                              <div className="mt-1 space-y-1.5">
+                                <textarea
+                                  value={editBody}
+                                  onChange={(e) => setEditBody(e.target.value)}
+                                  rows={2}
+                                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface resize-none"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={handleSaveEdit}
+                                    disabled={!editBody.trim()}
+                                    className="bg-blue text-white px-3 py-1 rounded-md text-xs font-semibold cursor-pointer hover:brightness-95 disabled:opacity-40"
+                                  >
+                                    更新
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingId(null)}
+                                    className="px-3 py-1 rounded-md text-xs font-medium text-text-dim hover:bg-rule-soft cursor-pointer"
+                                  >
+                                    取消
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-text-dim whitespace-pre-wrap break-words mt-0.5">
+                                {item.body}
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      ) : (
+                        <li
+                          key={`a-${item.id}`}
+                          className="flex items-center gap-2 text-xs text-text-faint pl-1"
+                        >
+                          <span className="w-1 h-1 rounded-full bg-text-faint/60 shrink-0" />
+                          <span className="truncate">
+                            <b className="text-text-dim font-medium">
+                              {item.actor.name}
+                            </b>{" "}
+                            {activityText(item)}
+                          </span>
+                          <span className="ml-auto shrink-0">
+                            {relTime(item.createdAtIso)}
+                          </span>
+                        </li>
+                      )
+                    )}
+                  </ol>
+                )}
+
+                <div className="mt-3 flex flex-col gap-2">
+                  <textarea
+                    value={commentBody}
+                    onChange={(e) => setCommentBody(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handlePostComment();
+                      }
+                    }}
+                    rows={2}
+                    placeholder="留言…（Enter 送出，Shift+Enter 換行）"
+                    className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface resize-none"
+                  />
+                  <button
+                    onClick={handlePostComment}
+                    disabled={!commentBody.trim() || posting}
+                    className="self-end bg-blue text-white px-4 py-1.5 rounded-lg font-semibold text-sm cursor-pointer hover:brightness-95 disabled:opacity-40"
+                  >
+                    {posting ? "送出中…" : "送出留言"}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="px-6 py-3 border-t border-rule flex items-center gap-2">
@@ -701,6 +952,463 @@ export function TaskDrawer({
         )}
       </aside>
     </>
+  );
+}
+
+// ==== 任務依賴（drawer 內）====
+
+function statusLabel(s: TaskStatus): string {
+  return statusOptions.find((o) => o.value === s)?.label ?? s;
+}
+
+function DependencySection({
+  task,
+  allTasks,
+}: {
+  task: ViewTask;
+  allTasks: ViewTask[];
+}) {
+  const router = useRouter();
+  const [deps, setDeps] = useState<ViewDependencies>({
+    blockedBy: [],
+    blocking: [],
+  });
+  const [loading, setLoading] = useState(false);
+  const [pickId, setPickId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setPickId("");
+    getTaskDependencies(task.id).then((d) => {
+      if (!cancelled) {
+        setDeps(d);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [task.id]);
+
+  async function refetch() {
+    setDeps(await getTaskDependencies(task.id));
+  }
+
+  const blockedByIds = new Set(deps.blockedBy.map((t) => t.id));
+  const candidates = allTasks.filter(
+    (t) => t.id !== task.id && !blockedByIds.has(t.id)
+  );
+
+  function handleAdd() {
+    if (!pickId) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await addDependency({ blockedId: task.id, blockerId: pickId });
+      if (res.ok) {
+        setPickId("");
+        await refetch();
+        router.refresh();
+      } else {
+        setError(res.error);
+      }
+    });
+  }
+
+  function handleRemove(blockerId: string) {
+    startTransition(async () => {
+      await removeDependency({ blockedId: task.id, blockerId });
+      await refetch();
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="pt-4 border-t border-rule">
+      <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-3">
+        依賴關係
+      </div>
+
+      <div className="mb-3">
+        <div className="text-xs text-text-dim mb-1.5">需先完成（阻擋此任務）</div>
+        {loading ? (
+          <div className="text-sm text-text-faint">載入中…</div>
+        ) : deps.blockedBy.length === 0 ? (
+          <div className="text-sm text-text-faint">無</div>
+        ) : (
+          <ul className="space-y-1">
+            {deps.blockedBy.map((t) => (
+              <li
+                key={t.id}
+                className="group flex items-center gap-2 bg-surface-2 rounded-lg px-2.5 py-1.5"
+              >
+                <span className="text-orange text-xs">⛓</span>
+                <span className="flex-1 text-sm truncate">{t.title}</span>
+                <span className="text-[11px] text-text-faint shrink-0">
+                  {statusLabel(t.status)}
+                </span>
+                <button
+                  onClick={() => handleRemove(t.id)}
+                  className="text-text-faint hover:text-red text-xs opacity-0 group-hover:opacity-100 cursor-pointer"
+                  title="移除依賴"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <select
+          value={pickId}
+          onChange={(e) => {
+            setPickId(e.target.value);
+            setError(null);
+          }}
+          className="flex-1 bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface appearance-none"
+        >
+          <option value="">＋ 加入需先完成的任務…</option>
+          {candidates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.title}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleAdd}
+          disabled={!pickId}
+          className="bg-rule-soft hover:bg-rule text-text-dim px-3 py-1.5 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-40"
+        >
+          加入
+        </button>
+      </div>
+      {error && <div className="mt-1.5 text-xs text-red">{error}</div>}
+
+      {deps.blocking.length > 0 && (
+        <div className="mt-3">
+          <div className="text-xs text-text-dim mb-1.5">此任務阻擋了</div>
+          <ul className="space-y-1">
+            {deps.blocking.map((t) => (
+              <li
+                key={t.id}
+                className="flex items-center gap-2 px-2.5 py-1 text-sm text-text-dim"
+              >
+                <span className="text-text-faint text-xs">→</span>
+                <span className="flex-1 truncate">{t.title}</span>
+                <span className="text-[11px] text-text-faint shrink-0">
+                  {statusLabel(t.status)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==== 工作清單（drawer 內，含拖排）====
+
+function ChecklistSection({ taskId }: { taskId: string }) {
+  const router = useRouter();
+  const [items, setItems] = useState<ViewChecklistItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [newContent, setNewContent] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [, startTransition] = useTransition();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setEditingId(null);
+    getTaskChecklist(taskId).then((its) => {
+      if (!cancelled) {
+        setItems(its);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
+
+  async function refetch() {
+    setItems(await getTaskChecklist(taskId));
+  }
+
+  function handleAdd() {
+    if (!newContent.trim() || adding) return;
+    setAdding(true);
+    startTransition(async () => {
+      const res = await addChecklistItem({ taskId, content: newContent });
+      if (res.ok) {
+        setNewContent("");
+        await refetch();
+        router.refresh();
+      } else {
+        alert(res.error);
+      }
+      setAdding(false);
+    });
+  }
+
+  function handleToggle(item: ViewChecklistItem) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i))
+    );
+    startTransition(async () => {
+      await toggleChecklistItem({ id: item.id, done: !item.done });
+      router.refresh();
+    });
+  }
+
+  function handleSaveEdit() {
+    if (!editingId || !editContent.trim()) return;
+    const id = editingId;
+    startTransition(async () => {
+      const res = await updateChecklistItem({ id, content: editContent });
+      if (res.ok) {
+        setEditingId(null);
+        await refetch();
+      } else {
+        alert(res.error);
+      }
+    });
+  }
+
+  function handleDelete(id: string) {
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    startTransition(async () => {
+      await deleteChecklistItem(id);
+      router.refresh();
+    });
+  }
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    const idx = reordered.findIndex((i) => i.id === active.id);
+    const prevPos = idx > 0 ? reordered[idx - 1].position : 0;
+    const nextPos =
+      idx < reordered.length - 1 ? reordered[idx + 1].position : prevPos + 2048;
+    const newPos = (prevPos + nextPos) / 2;
+    setItems(
+      reordered.map((i) =>
+        i.id === active.id ? { ...i, position: newPos } : i
+      )
+    );
+    startTransition(async () => {
+      await reorderChecklistItem({ id: active.id as string, position: newPos });
+      router.refresh();
+    });
+  }
+
+  const done = items.filter((i) => i.done).length;
+
+  return (
+    <div className="pt-4 border-t border-rule">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+          工作清單
+        </span>
+        {items.length > 0 && (
+          <span className="text-[11px] text-text-faint tabular">
+            {done}/{items.length}
+          </span>
+        )}
+      </div>
+
+      {items.length > 0 && (
+        <div className="h-1 bg-rule rounded-full mb-3 overflow-hidden">
+          <div
+            className="h-full bg-green rounded-full transition-[width] duration-200"
+            style={{ width: `${(done / items.length) * 100}%` }}
+          />
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-sm text-text-faint py-1">載入中…</div>
+      ) : (
+        <DndContext
+          id={`checklist-${taskId}`}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={items.map((i) => i.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="space-y-1">
+              {items.map((item) => (
+                <ChecklistRow
+                  key={item.id}
+                  item={item}
+                  editing={editingId === item.id}
+                  editContent={editContent}
+                  onToggle={() => handleToggle(item)}
+                  onStartEdit={() => {
+                    setEditingId(item.id);
+                    setEditContent(item.content);
+                  }}
+                  onEditChange={setEditContent}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={() => setEditingId(null)}
+                  onDelete={() => handleDelete(item.id)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
+      )}
+
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          value={newContent}
+          onChange={(e) => setNewContent(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder="新增清單項…"
+          className="flex-1 bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={!newContent.trim() || adding}
+          className="bg-rule-soft hover:bg-rule text-text-dim px-3 py-1.5 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-40"
+        >
+          ＋
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ChecklistRow({
+  item,
+  editing,
+  editContent,
+  onToggle,
+  onStartEdit,
+  onEditChange,
+  onSaveEdit,
+  onCancelEdit,
+  onDelete,
+}: {
+  item: ViewChecklistItem;
+  editing: boolean;
+  editContent: string;
+  onToggle: () => void;
+  onStartEdit: () => void;
+  onEditChange: (v: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.id });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      className="group flex items-center gap-2 rounded-lg px-1 py-0.5 hover:bg-surface-2"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="text-text-faint hover:text-text-dim cursor-grab active:cursor-grabbing text-xs px-0.5 touch-none"
+        title="拖曳排序"
+        aria-label="拖曳排序"
+      >
+        ⠿
+      </button>
+      <input
+        type="checkbox"
+        checked={item.done}
+        onChange={onToggle}
+        className="w-4 h-4 accent-green cursor-pointer shrink-0"
+      />
+      {editing ? (
+        <div className="flex-1 flex items-center gap-1.5">
+          <input
+            value={editContent}
+            onChange={(e) => onEditChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onSaveEdit();
+              } else if (e.key === "Escape") {
+                onCancelEdit();
+              }
+            }}
+            autoFocus
+            className="flex-1 bg-surface border border-blue rounded-md px-2 py-1 text-sm focus:outline-none"
+          />
+          <button
+            onClick={onSaveEdit}
+            disabled={!editContent.trim()}
+            className="text-[11px] text-blue font-semibold cursor-pointer disabled:opacity-40"
+          >
+            存
+          </button>
+          <button
+            onClick={onCancelEdit}
+            className="text-[11px] text-text-faint cursor-pointer"
+          >
+            取消
+          </button>
+        </div>
+      ) : (
+        <>
+          <span
+            onDoubleClick={onStartEdit}
+            className={`flex-1 text-sm break-words ${
+              item.done ? "line-through text-text-faint" : "text-text-dim"
+            }`}
+          >
+            {item.content}
+          </span>
+          <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100">
+            <button
+              onClick={onStartEdit}
+              className="text-[11px] text-text-faint hover:text-blue cursor-pointer"
+            >
+              編輯
+            </button>
+            <button
+              onClick={onDelete}
+              className="text-[11px] text-text-faint hover:text-red cursor-pointer"
+            >
+              刪除
+            </button>
+          </span>
+        </>
+      )}
+    </li>
   );
 }
 
@@ -750,6 +1458,55 @@ function DrawerSelect({
 }
 
 // ==== Helpers ====
+
+const avatarGradientMap: Record<TimelineAuthor["gradient"], string> = {
+  w: "from-blue to-purple",
+  l: "from-green to-teal",
+  s: "from-pink to-orange",
+  y: "from-purple to-pink",
+};
+
+function TimelineAvatar({ author }: { author: TimelineAuthor }) {
+  return (
+    <div
+      className={`w-7 h-7 shrink-0 rounded-full bg-gradient-to-br ${avatarGradientMap[author.gradient]} text-white text-[11px] font-bold flex items-center justify-center`}
+      title={author.name}
+    >
+      {author.initial}
+    </div>
+  );
+}
+
+function relTime(iso: string): string {
+  const d = new Date(iso);
+  const min = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (min < 1) return "剛剛";
+  if (min < 60) return `${min} 分鐘前`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} 小時前`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day} 天前`;
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function activityText(a: ViewActivity): string {
+  switch (a.field) {
+    case "CREATED":
+      return "建立了這個任務";
+    case "STATUS":
+      return `將狀態改為「${a.toValue}」`;
+    case "ASSIGNEE":
+      return `將負責人改為「${a.toValue ?? "未指派"}」`;
+    case "PRIORITY":
+      return `將優先級改為「${a.toValue}」`;
+    case "START_DATE":
+      return `將開始日改為「${a.toValue ?? "無"}」`;
+    case "DUE_DATE":
+      return `將截止日改為「${a.toValue ?? "無"}」`;
+    default:
+      return "更新了任務";
+  }
+}
 
 function ProjectTag({ project }: { project: ViewProject }) {
   return (
