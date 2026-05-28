@@ -686,18 +686,18 @@ export function TaskDrawer({
   }
 
   return (
-    <>
+    <div
+      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${
+        open
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
+      }`}
+    >
       <div
-        className={`fixed inset-0 bg-black/25 backdrop-blur-[2px] transition-opacity duration-200 z-40 ${
-          open
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
-        onClick={onClose}
-      />
-      <aside
-        className={`fixed right-0 top-0 h-[100dvh] w-full sm:w-[480px] sm:max-w-[92vw] bg-surface shadow-2xl z-50 flex flex-col transition-transform duration-200 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
+        onClick={(e) => e.stopPropagation()}
+        className={`bg-surface rounded-2xl shadow-2xl w-full sm:w-[640px] max-w-[92vw] max-h-[88dvh] flex flex-col overflow-hidden transition-transform duration-200 ease-out ${
+          open ? "scale-100" : "scale-95"
         }`}
       >
         {task && (
@@ -950,8 +950,8 @@ export function TaskDrawer({
             </div>
           </>
         )}
-      </aside>
-    </>
+      </div>
+    </div>
   );
 }
 
