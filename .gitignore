@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# 一次性開發驗證腳本，不進版控
+scripts/
