@@ -974,7 +974,8 @@ function DependencySection({
     blocking: [],
   });
   const [loading, setLoading] = useState(false);
-  const [pickId, setPickId] = useState("");
+  const [query, setQuery] = useState("");
+  const [showDone, setShowDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -982,7 +983,7 @@ function DependencySection({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setPickId("");
+    setQuery("");
     getTaskDependencies(task.id).then((d) => {
       if (!cancelled) {
         setDeps(d);
@@ -999,17 +1000,24 @@ function DependencySection({
   }
 
   const blockedByIds = new Set(deps.blockedBy.map((t) => t.id));
-  const candidates = allTasks.filter(
+  // 排除自己 + 已選的；已完成的依賴沒意義，預設藏（showDone 可切回）
+  const selectable = allTasks.filter(
     (t) => t.id !== task.id && !blockedByIds.has(t.id)
   );
+  const hiddenDoneCount = selectable.filter((t) => t.status === "DONE").length;
+  const q = query.trim().toLowerCase();
+  const candidates = selectable.filter((t) => {
+    if (!showDone && t.status === "DONE") return false;
+    if (q && !t.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
 
-  function handleAdd() {
-    if (!pickId) return;
+  function handlePick(blockerId: string) {
     setError(null);
     startTransition(async () => {
-      const res = await addDependency({ blockedId: task.id, blockerId: pickId });
+      const res = await addDependency({ blockedId: task.id, blockerId });
       if (res.ok) {
-        setPickId("");
+        setQuery("");
         await refetch();
         router.refresh();
       } else {
@@ -1063,29 +1071,50 @@ function DependencySection({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <select
-          value={pickId}
+      <div>
+        <input
+          type="text"
+          value={query}
           onChange={(e) => {
-            setPickId(e.target.value);
+            setQuery(e.target.value);
             setError(null);
           }}
-          className="flex-1 bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface appearance-none"
-        >
-          <option value="">＋ 加入需先完成的任務…</option>
-          {candidates.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.title}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleAdd}
-          disabled={!pickId}
-          className="bg-rule-soft hover:bg-rule text-text-dim px-3 py-1.5 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-40"
-        >
-          加入
-        </button>
+          placeholder="搜尋任務加入「需先完成」…"
+          className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+        />
+        <div className="mt-1.5 max-h-56 overflow-y-auto rounded-lg border border-rule divide-y divide-rule">
+          {candidates.length === 0 ? (
+            <div className="px-3 py-3 text-sm text-text-faint text-center">
+              {q ? "找不到符合的任務" : "沒有可加入的任務"}
+            </div>
+          ) : (
+            candidates.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => handlePick(t.id)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 cursor-pointer"
+              >
+                <span className="flex-1 text-sm truncate">{t.title}</span>
+                <span className="text-[11px] text-text-faint shrink-0">
+                  {statusLabel(t.status)}
+                </span>
+                {t.assignee && (
+                  <span className="text-[11px] text-text-dim shrink-0 max-w-[6rem] truncate">
+                    {t.assignee.name}
+                  </span>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+        {hiddenDoneCount > 0 && (
+          <button
+            onClick={() => setShowDone((v) => !v)}
+            className="mt-1.5 text-[11px] text-text-faint hover:text-text-dim cursor-pointer"
+          >
+            {showDone ? "隱藏已完成任務" : `顯示已完成任務（${hiddenDoneCount}）`}
+          </button>
+        )}
       </div>
       {error && <div className="mt-1.5 text-xs text-red">{error}</div>}
 
