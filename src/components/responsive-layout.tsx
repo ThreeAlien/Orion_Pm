@@ -22,13 +22,19 @@ export function ResponsiveLayout({
   users: ViewUser[];
   teams: ViewTeam[];
   teamScope: string;
-  sessionUser: { name: string; image: string | null } | null;
+  sessionUser: {
+    name: string;
+    image: string | null;
+    avatarColor?: string | null;
+  } | null;
   currentUserId: string | undefined;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(true);
   const totalTasks = projects.reduce((sum, p) => sum + p.taskCount, 0);
+  const projectsWithTasks = projects.filter((p) => p.taskCount > 0);
   const closeMobile = () => setMobileOpen(false);
   const toggleCollapse = () => setCollapsed((c) => !c);
 
@@ -97,6 +103,8 @@ export function ResponsiveLayout({
           </button>
         )}
 
+        {/* 可滾動的 nav 區：內容太長時這裡捲動，logo 固定上方、使用者選單固定下方 */}
+        <div className="flex-1 min-h-0 overflow-y-auto -mr-1.5 pr-1.5">
         {teams.length > 0 && (
           <TeamFilter teams={teams} scope={teamScope} collapsed={collapsed} />
         )}
@@ -162,11 +170,10 @@ export function ResponsiveLayout({
           />
         </NavBlock>
 
-        {projects.filter((p) => p.taskCount > 0).length > 0 && (
-          <NavBlock label="專案" collapsed={collapsed}>
-            {projects
-              .filter((p) => p.taskCount > 0)
-              .map((p) => (
+        {projectsWithTasks.length > 0 &&
+          (collapsed ? (
+            <NavBlock label="專案" collapsed>
+              {projectsWithTasks.map((p) => (
                 <NavItem
                   key={p.id}
                   icon="●"
@@ -175,11 +182,38 @@ export function ResponsiveLayout({
                   href={`/projects/${p.id}`}
                   count={p.taskCount}
                   onClick={closeMobile}
-                  collapsed={collapsed}
+                  collapsed
                 />
               ))}
-          </NavBlock>
-        )}
+            </NavBlock>
+          ) : (
+            <div className="mb-[18px]">
+              {/* 可收合的專案區 — 太長時點標題收起 */}
+              <button
+                type="button"
+                onClick={() => setProjectsOpen((o) => !o)}
+                className="w-full flex items-center gap-1 px-2.5 pt-1.5 pb-1 text-[11px] text-text-faint font-semibold uppercase tracking-wider hover:text-text cursor-pointer"
+              >
+                <span className="flex-1 text-left">專案</span>
+                <span className="tabular opacity-70">{projectsWithTasks.length}</span>
+                <span className="ml-1 text-[10px]">{projectsOpen ? "▾" : "▸"}</span>
+              </button>
+              {projectsOpen &&
+                projectsWithTasks.map((p) => (
+                  <NavItem
+                    key={p.id}
+                    icon="●"
+                    iconColor={resolveProjectColor(p.color)}
+                    label={p.name}
+                    href={`/projects/${p.id}`}
+                    count={p.taskCount}
+                    onClick={closeMobile}
+                    collapsed={false}
+                  />
+                ))}
+            </div>
+          ))}
+        </div>
 
         <UserMenu user={sessionUser} collapsed={collapsed} />
       </aside>
@@ -223,7 +257,7 @@ function UserMenu({
   user,
   collapsed,
 }: {
-  user: { name: string; image: string | null } | null;
+  user: { name: string; image: string | null; avatarColor?: string | null } | null;
   collapsed?: boolean;
 }) {
   if (!user) {
@@ -249,7 +283,14 @@ function UserMenu({
           />
         ) : (
           <div
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-blue to-purple text-white font-semibold text-[13px] flex items-center justify-center"
+            className={`w-8 h-8 rounded-full text-white font-semibold text-[13px] flex items-center justify-center ${
+              user.avatarColor ? "" : "bg-gradient-to-br from-blue to-purple"
+            }`}
+            style={
+              user.avatarColor
+                ? { background: resolveProjectColor(user.avatarColor) }
+                : undefined
+            }
             title={user.name}
           >
             {initial}
@@ -278,7 +319,16 @@ function UserMenu({
             className="w-8 h-8 rounded-full object-cover"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue to-purple text-white font-semibold text-[13px] flex items-center justify-center">
+          <div
+            className={`w-8 h-8 rounded-full text-white font-semibold text-[13px] flex items-center justify-center ${
+              user.avatarColor ? "" : "bg-gradient-to-br from-blue to-purple"
+            }`}
+            style={
+              user.avatarColor
+                ? { background: resolveProjectColor(user.avatarColor) }
+                : undefined
+            }
+          >
             {initial}
           </div>
         )}

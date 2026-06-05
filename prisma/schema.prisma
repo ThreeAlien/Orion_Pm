@@ -59,6 +59,8 @@ model User {
   name          String
   avatarUrl     String?
   image         String?
+  /// 自訂頭貼底色（color token，沒上傳照片時用；null = 依名字自動配色）
+  avatarColor   String?
   // Auth.js v5 fields
   emailVerified DateTime?
 

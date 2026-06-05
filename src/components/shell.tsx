@@ -25,9 +25,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     ? await fetchUserAvatar(session.user.id)
     : null;
   const sessionUser = profile
-    ? { name: profile.name, image: profile.image }
+    ? { name: profile.name, image: profile.image, avatarColor: profile.avatarColor }
     : session?.user
-    ? { name: session.user.name ?? "User", image: session.user.image ?? null }
+    ? {
+        name: session.user.name ?? "User",
+        image: session.user.image ?? null,
+        avatarColor: null,
+      }
     : null;
   return (
     <ResponsiveLayout

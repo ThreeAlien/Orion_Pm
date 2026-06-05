@@ -58,6 +58,7 @@ export async function updateTeam(raw: unknown) {
 const UpdateProfileSchema = z.object({
   name: z.string().trim().min(1).max(60),
   avatarUrl: z.string().nullable().optional(),
+  avatarColor: z.string().max(40).nullable().optional(),
 });
 
 export async function updateMyProfile(raw: unknown) {
@@ -74,7 +75,14 @@ export async function updateMyProfile(raw: unknown) {
   }
   await db.user.update({
     where: { id: uid },
-    data: { name: data.name, avatarUrl: data.avatarUrl ?? null },
+    data: {
+      name: data.name,
+      avatarUrl: data.avatarUrl ?? null,
+      // avatarColor 只在「沒上傳照片」時生效；undefined 不動、null 清掉
+      ...(data.avatarColor !== undefined
+        ? { avatarColor: data.avatarColor }
+        : {}),
+    },
   });
   revalidatePath("/", "layout");
   revalidatePath("/members");

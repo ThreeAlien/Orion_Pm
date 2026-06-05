@@ -29,6 +29,11 @@ export function resolveProjectColor(c: string): string {
   return NAMED_PROJECT_COLORS[c] ?? c;
 }
 
+// 頭貼底色：有自訂 token → 回 hex（純色背景）；沒設 → null（呼叫端 fallback 名字 gradient）
+export function resolveAvatarColor(token: string | null | undefined): string | null {
+  return token ? resolveProjectColor(token) : null;
+}
+
 /// chip 用：12% alpha 背景 + 主色文字（任何 hex 都通用）
 export function projectChipStyle(c: string): React.CSSProperties {
   const hex = resolveProjectColor(c);
@@ -42,6 +47,8 @@ export interface ViewUser {
   name: string;
   initial: string;
   gradient: AvatarGradient;
+  /// 自訂頭貼底色 token；null = 用名字 hash 的 gradient
+  avatarColor?: string | null;
 }
 
 export interface ViewProject {
@@ -124,6 +131,7 @@ export interface TimelineAuthor {
   name: string;
   initial: string;
   gradient: AvatarGradient;
+  avatarColor?: string | null;
 }
 
 export interface ViewComment {

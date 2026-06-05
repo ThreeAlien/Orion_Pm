@@ -1,5 +1,6 @@
 // 團隊成員頁 — 列出所有 User（Google 登入後自動 upsert 進來）
 import type { ViewMember } from "@/server/queries";
+import { resolveProjectColor } from "@/lib/data";
 import { RemoveMemberButton } from "./remove-member-button";
 import { EditProfileButton } from "./edit-profile-button";
 
@@ -75,6 +76,13 @@ function MemberCard({
             alt={member.name}
             className="w-12 h-12 rounded-full object-cover"
           />
+        ) : member.avatarColor ? (
+          <div
+            className="w-12 h-12 rounded-full text-white font-bold text-lg flex items-center justify-center"
+            style={{ background: resolveProjectColor(member.avatarColor) }}
+          >
+            {member.initial}
+          </div>
         ) : (
           <div
             className={`w-12 h-12 rounded-full bg-gradient-to-br ${
@@ -135,7 +143,11 @@ function MemberCard({
   // 自己的卡片：整張可點開編輯（EditProfileButton 提供卡片外框 + hover 提示）
   if (isSelf) {
     return (
-      <EditProfileButton name={member.name} image={member.image}>
+      <EditProfileButton
+        name={member.name}
+        image={member.image}
+        avatarColor={member.avatarColor}
+      >
         {inner}
       </EditProfileButton>
     );

@@ -1322,9 +1322,13 @@ const avatarGradientMap: Record<TimelineAuthor["gradient"], string> = {
 };
 
 function TimelineAvatar({ author }: { author: TimelineAuthor }) {
+  const custom = author.avatarColor;
   return (
     <div
-      className={`w-7 h-7 shrink-0 rounded-full bg-gradient-to-br ${avatarGradientMap[author.gradient]} text-white text-[11px] font-bold flex items-center justify-center`}
+      className={`w-7 h-7 shrink-0 rounded-full text-white text-[11px] font-bold flex items-center justify-center ${
+        custom ? "" : `bg-gradient-to-br ${avatarGradientMap[author.gradient]}`
+      }`}
+      style={custom ? { background: resolveProjectColor(custom) } : undefined}
       title={author.name}
     >
       {author.initial}
@@ -1381,9 +1385,13 @@ function MiniAvatar({ user }: { user: ViewUser }) {
     s: "from-pink to-orange",
     y: "from-purple to-pink",
   };
+  const custom = user.avatarColor;
   return (
     <div
-      className={`w-[18px] h-[18px] rounded-full bg-gradient-to-br ${map[user.gradient]} text-white text-[9px] font-bold flex items-center justify-center`}
+      className={`w-[18px] h-[18px] rounded-full text-white text-[9px] font-bold flex items-center justify-center ${
+        custom ? "" : `bg-gradient-to-br ${map[user.gradient]}`
+      }`}
+      style={custom ? { background: resolveProjectColor(custom) } : undefined}
       title={user.name}
     >
       {user.initial}

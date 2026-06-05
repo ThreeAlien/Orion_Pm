@@ -3,6 +3,18 @@
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateMyProfile } from "@/server/actions";
+import { resolveProjectColor } from "@/lib/data";
+
+const AVATAR_SWATCHES = [
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "teal",
+  "blue",
+  "purple",
+  "pink",
+];
 
 // 把選的圖檔置中裁成正方形、縮到 size px、壓成 webp data URL（無物件儲存，直接存 DB）。
 function fileToWebp(file: File, size = 128): Promise<string> {
@@ -33,10 +45,12 @@ function fileToWebp(file: File, size = 128): Promise<string> {
 export function EditProfileButton({
   name: initialName,
   image,
+  avatarColor,
   children,
 }: {
   name: string;
   image: string | null;
+  avatarColor: string | null;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -48,6 +62,7 @@ export function EditProfileButton({
   // avatar：undefined = 不變動；string = 新頭貼；null = 清掉自訂回退 Google
   const [avatar, setAvatar] = useState<string | null | undefined>(undefined);
   const [preview, setPreview] = useState<string | null>(image);
+  const [color, setColor] = useState<string>(avatarColor ?? "blue");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,10 +71,11 @@ export function EditProfileButton({
       setName(initialName);
       setAvatar(undefined);
       setPreview(image);
+      setColor(avatarColor ?? "blue");
       setSaving(false);
       setError(null);
     }
-  }, [open, initialName, image]);
+  }, [open, initialName, image, avatarColor]);
 
   useEffect(() => {
     if (!open) return;
@@ -99,6 +115,7 @@ export function EditProfileButton({
         name: name.trim(),
         // undefined 時不送 avatarUrl（維持原值）；null 清除；string 更新
         ...(avatar !== undefined ? { avatarUrl: avatar } : {}),
+        avatarColor: color || null,
       });
       setSaving(false);
       if (res.ok) {
@@ -161,7 +178,10 @@ export function EditProfileButton({
                 className="w-16 h-16 rounded-full object-cover ring-1 ring-rule"
               />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue to-purple text-white font-bold text-2xl flex items-center justify-center">
+              <div
+                className="w-16 h-16 rounded-full text-white font-bold text-2xl flex items-center justify-center"
+                style={{ background: resolveProjectColor(color) }}
+              >
                 {name[0]?.toUpperCase() ?? "?"}
               </div>
             )}
@@ -191,6 +211,33 @@ export function EditProfileButton({
               className="hidden"
             />
           </div>
+
+          {/* 頭貼底色 — 沒上傳照片時生效（用名字首字 + 這個底色）*/}
+          {!preview && (
+            <div>
+              <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+                頭貼底色
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {AVATAR_SWATCHES.map((tok) => (
+                  <button
+                    key={tok}
+                    type="button"
+                    onClick={() => setColor(tok)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs transition-transform ${
+                      color === tok
+                        ? "ring-2 ring-text ring-offset-2 ring-offset-surface scale-105"
+                        : "hover:scale-105"
+                    }`}
+                    style={{ background: resolveProjectColor(tok) }}
+                    title={tok}
+                  >
+                    {color === tok ? "✓" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 姓名 */}
           <label className="block">

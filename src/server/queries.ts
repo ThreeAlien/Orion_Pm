@@ -50,21 +50,26 @@ function pickDuePill(due: Date, status: string): DuePillKind {
   return "soft";
 }
 
-function toViewUser(name: string, id: string): ViewUser {
+function toViewUser(
+  name: string,
+  id: string,
+  avatarColor?: string | null
+): ViewUser {
   return {
     id,
     name,
     initial: name[0] ?? "?",
     gradient: pickGradient(name),
+    avatarColor: avatarColor ?? null,
   };
 }
 
 export async function fetchUsers(): Promise<ViewUser[]> {
   const rows = await db.user.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, avatarColor: true },
   });
-  return rows.map((u) => toViewUser(u.name, u.id));
+  return rows.map((u) => toViewUser(u.name, u.id, u.avatarColor));
 }
 
 export interface ViewMember {
@@ -74,6 +79,7 @@ export interface ViewMember {
   image: string | null;
   initial: string;
   gradient: AvatarGradient;
+  avatarColor: string | null;
   joinedAt: Date;
   ownedProjects: number;
   assignedTasks: number;
@@ -107,6 +113,7 @@ export async function fetchTeamMembers(): Promise<ViewMember[]> {
     email: u.email,
     initial: u.name[0]?.toUpperCase() ?? "?",
     gradient: pickGradient(u.name),
+    avatarColor: u.avatarColor,
     joinedAt: u.createdAt,
     ownedProjects: u._count.ownedProjects,
     assignedTasks: u._count.assignedTasks,
@@ -137,13 +144,13 @@ export async function fetchProjects(): Promise<ViewProject[]> {
 // sidebar / topbar 顯示用：當前使用者的顯示名稱 + 解析後頭像（自訂 avatarUrl 優先）
 export async function fetchUserAvatar(
   id: string
-): Promise<{ name: string; image: string | null } | null> {
+): Promise<{ name: string; image: string | null; avatarColor: string | null } | null> {
   const u = await db.user.findUnique({
     where: { id },
-    select: { name: true, image: true, avatarUrl: true },
+    select: { name: true, image: true, avatarUrl: true, avatarColor: true },
   });
   if (!u) return null;
-  return { name: u.name, image: u.avatarUrl ?? u.image };
+  return { name: u.name, image: u.avatarUrl ?? u.image, avatarColor: u.avatarColor };
 }
 
 export async function fetchTeams(): Promise<ViewTeam[]> {
@@ -523,7 +530,7 @@ export async function fetchTasks(): Promise<ViewTask[]> {
       priority: t.priority,
       projectId: t.projectId,
       assignee: t.assignee
-        ? toViewUser(t.assignee.name, t.assignee.id)
+        ? toViewUser(t.assignee.name, t.assignee.id, t.assignee.avatarColor)
         : undefined,
       due: t.dueDate ? formatDue(t.dueDate, t.completedAt) : undefined,
       duePill: t.dueDate ? pickDuePill(t.dueDate, t.status) : undefined,
@@ -664,7 +671,7 @@ export async function fetchTaskTimeline(
   const [comments, activities] = await Promise.all([
     db.comment.findMany({
       where: { taskId },
-      include: { author: { select: { id: true, name: true } } },
+      include: { author: { select: { id: true, name: true, avatarColor: true } } },
     }),
     db.activity.findMany({
       where: { taskId },
@@ -697,7 +704,7 @@ export async function fetchTaskTimeline(
 }
 
 function toTimelineAuthor(
-  u: { id: string; name: string } | null
+  u: { id: string; name: string; avatarColor?: string | null } | null
 ): TimelineAuthor {
   if (!u) {
     return { id: null, name: "已移除使用者", initial: "?", gradient: "y" };
@@ -707,5 +714,6 @@ function toTimelineAuthor(
     name: u.name,
     initial: u.name[0] ?? "?",
     gradient: pickGradient(u.name),
+    avatarColor: u.avatarColor ?? null,
   };
 }
