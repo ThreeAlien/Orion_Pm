@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.github
+.vscode
+.idea
+.env
+.env.*
+!.env.example
+*.log
+README.md
+AGENTS.md
+CLAUDE.md
+coverage
+scripts
+nginx
+docker-compose.yml

@@ -1,0 +1,24 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: orion-pm:latest
+    container_name: orion-pm
+    restart: unless-stopped
+    ports:
+      # 只綁 loopback，外部由 nginx 代理 → 不會直接從 8083 對外
+      - "127.0.0.1:8083:3000"
+    env_file:
+      - .env.production
+    healthcheck:
+      # 用 node 內建 http 避免依賴 wget/curl；只要 server 有回 < 500 都算活著（不打 DB）
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:3000/login', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s

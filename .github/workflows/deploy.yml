@@ -1,0 +1,39 @@
+name: Deploy to Linode
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # 在 139.162.123.27 上跑的 self-hosted runner，標籤 orion-pm
+    runs-on: [self-hosted, orion-pm]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Link .env.production from secrets dir
+        # 正式 env 放在 runner 工作目錄外，每次 build 前 copy 進來
+        run: cp /opt/orion-pm-secrets/.env.production .
+
+      - name: Build image
+        run: docker compose build --pull
+
+      - name: Run prisma migrate deploy
+        run: docker compose run --rm app npx prisma migrate deploy
+
+      - name: Start / replace container
+        run: docker compose up -d
+
+      - name: Cleanup dangling images
+        run: docker image prune -f
+
+      - name: Show status
+        run: docker compose ps
