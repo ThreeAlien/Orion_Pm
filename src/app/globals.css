@@ -120,3 +120,18 @@ body {
   font-size: 0.85em;
   overflow-x: auto;
 }
+
+/* Quill 連結/編輯 tooltip 跑版修正 — 鎖在編輯器內、限寬、RWD */
+.orion-quill { position: relative; }
+.orion-quill .ql-tooltip {
+  left: 0 !important;
+  max-width: calc(100% - 8px);
+  white-space: normal;
+  z-index: 20;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  border-radius: 0.5rem;
+}
+.orion-quill .ql-tooltip input[type="text"] {
+  width: 160px;
+  max-width: 48vw;
+}

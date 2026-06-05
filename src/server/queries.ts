@@ -108,8 +108,8 @@ export async function fetchTeamMembers(): Promise<ViewMember[]> {
   return rows.map((u) => ({
     id: u.id,
     name: u.name,
-    // 自訂頭貼（avatarUrl）優先，沒設才回退 Google 帶入的 image
-    image: u.avatarUrl ?? u.image,
+    // 顯示優先序：自訂照片 > 自訂底色（此時 image=null，由 avatarColor 畫色塊）> Google 頭像
+    image: u.avatarUrl ?? (u.avatarColor ? null : u.image),
     email: u.email,
     initial: u.name[0]?.toUpperCase() ?? "?",
     gradient: pickGradient(u.name),
@@ -150,7 +150,11 @@ export async function fetchUserAvatar(
     select: { name: true, image: true, avatarUrl: true, avatarColor: true },
   });
   if (!u) return null;
-  return { name: u.name, image: u.avatarUrl ?? u.image, avatarColor: u.avatarColor };
+  return {
+    name: u.name,
+    image: u.avatarUrl ?? (u.avatarColor ? null : u.image),
+    avatarColor: u.avatarColor,
+  };
 }
 
 export async function fetchTeams(): Promise<ViewTeam[]> {
@@ -510,6 +514,7 @@ export async function fetchTasks(): Promise<ViewTask[]> {
     orderBy: [{ status: "asc" }, { position: "asc" }],
     include: {
       assignee: true,
+      assignees: { include: { user: true } },
       project: { select: { team: { select: { slug: true } } } },
       subtasks: { select: { id: true, status: true } },
       checklist: { select: { done: true } },
@@ -532,6 +537,9 @@ export async function fetchTasks(): Promise<ViewTask[]> {
       assignee: t.assignee
         ? toViewUser(t.assignee.name, t.assignee.id, t.assignee.avatarColor)
         : undefined,
+      assignees: t.assignees.map((a) =>
+        toViewUser(a.user.name, a.user.id, a.user.avatarColor)
+      ),
       due: t.dueDate ? formatDue(t.dueDate, t.completedAt) : undefined,
       duePill: t.dueDate ? pickDuePill(t.dueDate, t.status) : undefined,
       startDateIso: t.startDate ? t.startDate.toISOString() : null,

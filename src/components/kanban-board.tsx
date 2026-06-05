@@ -164,7 +164,12 @@ export function KanbanBoard({
         selectedProjectIds.size === 0 ||
         (t.projectId && selectedProjectIds.has(t.projectId))
     )
-    .filter((t) => !assigneeFilter || t.assignee?.id === assigneeFilter);
+    .filter(
+      (t) =>
+        !assigneeFilter ||
+        (t.assignees?.some((a) => a.id === assigneeFilter) ??
+          t.assignee?.id === assigneeFilter)
+    );
 
   function toggleProjectFilter(id: string) {
     setSelectedProjectIds((prev) => {
@@ -520,7 +525,7 @@ function TaskCardInner({
 
       <div className="flex items-center gap-2 text-[11px] text-text-dim">
         <div className="flex items-center gap-1.5">
-          {task.assignee && <MiniAvatar user={task.assignee} />}
+          <AssigneeAvatars task={task} />
           {task.subtasks && (
             <span className="text-[11px] text-text-faint inline-flex items-center gap-0.5">
               ▦ {task.subtasks.done}/{task.subtasks.total}
@@ -570,7 +575,7 @@ export function TaskDrawer({
   const [status, setStatus] = useState<TaskStatus>("TODO");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [projectId, setProjectId] = useState<string>("");
-  const [assigneeId, setAssigneeId] = useState<string>("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [saving, setSaving] = useState(false);
@@ -591,7 +596,13 @@ export function TaskDrawer({
       setStatus(task.status);
       setPriority(task.priority);
       setProjectId(task.projectId ?? "");
-      setAssigneeId(task.assignee?.id ?? "");
+      setAssigneeIds(
+        task.assignees && task.assignees.length > 0
+          ? task.assignees.map((a) => a.id)
+          : task.assignee
+          ? [task.assignee.id]
+          : []
+      );
       setStartDate(task.startDateIso ? task.startDateIso.slice(0, 10) : "");
       setDueDate(task.dueDateIso ? task.dueDateIso.slice(0, 10) : "");
     }
@@ -678,7 +689,7 @@ export function TaskDrawer({
         status,
         priority,
         projectId: projectId || null,
-        assigneeId: assigneeId || null,
+        assigneeIds,
         startDate: startDate || null,
         dueDate: dueDate || null,
       });
@@ -772,16 +783,42 @@ export function TaskDrawer({
                     ]}
                   />
                 </DrawerField>
-                <DrawerField label="負責人">
-                  <DrawerSelect
-                    value={assigneeId}
-                    onChange={setAssigneeId}
-                    options={[
-                      { value: "", label: "未指派" },
-                      ...users.map((u) => ({ value: u.id, label: u.name })),
-                    ]}
-                  />
-                </DrawerField>
+                <div className="sm:col-span-2">
+                  <DrawerField label="負責人（可多選）">
+                    {users.length === 0 ? (
+                      <div className="text-sm text-text-faint px-1 py-1.5">
+                        尚無成員
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {users.map((u) => {
+                          const on = assigneeIds.includes(u.id);
+                          return (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() =>
+                                setAssigneeIds((prev) =>
+                                  prev.includes(u.id)
+                                    ? prev.filter((x) => x !== u.id)
+                                    : [...prev, u.id]
+                                )
+                              }
+                              className={`px-2.5 py-1 rounded-full text-[12px] font-medium cursor-pointer transition-colors ${
+                                on
+                                  ? "bg-blue text-white"
+                                  : "bg-surface-2 text-text-dim hover:bg-rule-soft"
+                              }`}
+                            >
+                              {on ? "✓ " : ""}
+                              {u.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </DrawerField>
+                </div>
                 <DrawerField label="開始日">
                   <input
                     type="date"
@@ -1388,13 +1425,38 @@ function MiniAvatar({ user }: { user: ViewUser }) {
   const custom = user.avatarColor;
   return (
     <div
-      className={`w-[18px] h-[18px] rounded-full text-white text-[9px] font-bold flex items-center justify-center ${
+      className={`w-[18px] h-[18px] rounded-full text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-surface ${
         custom ? "" : `bg-gradient-to-br ${map[user.gradient]}`
       }`}
       style={custom ? { background: resolveProjectColor(custom) } : undefined}
       title={user.name}
     >
       {user.initial}
+    </div>
+  );
+}
+
+// 卡片多負責人：最多 3 顆頭像（重疊）+ 溢出 +N
+function AssigneeAvatars({ task }: { task: ViewTask }) {
+  const list =
+    task.assignees && task.assignees.length > 0
+      ? task.assignees
+      : task.assignee
+      ? [task.assignee]
+      : [];
+  if (list.length === 0) return null;
+  const shown = list.slice(0, 3);
+  const extra = list.length - shown.length;
+  return (
+    <div className="flex items-center">
+      <div className="flex -space-x-1.5">
+        {shown.map((u) => (
+          <MiniAvatar key={u.id} user={u} />
+        ))}
+      </div>
+      {extra > 0 && (
+        <span className="ml-1 text-[10px] text-text-faint tabular">+{extra}</span>
+      )}
     </div>
   );
 }

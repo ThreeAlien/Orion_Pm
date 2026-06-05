@@ -46,7 +46,7 @@ export function NewTaskDialog({
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [projectId, setProjectId] = useState<string>(defaultProjectId ?? "");
-  const [assigneeId, setAssigneeId] = useState<string>("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export function NewTaskDialog({
       setStatus(defaultStatus);
       setPriority("MEDIUM");
       setProjectId(defaultProjectId ?? "");
-      setAssigneeId(defaultAssigneeId ?? "");
+      setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setStartDate("");
       setDueDate("");
       setError(null);
@@ -88,7 +88,7 @@ export function NewTaskDialog({
         status,
         priority,
         projectId: projectId || null,
-        assigneeId: assigneeId || null,
+        assigneeIds,
         startDate: startDate || null,
         dueDate: dueDate || null,
       });
@@ -189,15 +189,37 @@ export function NewTaskDialog({
                   ]}
                 />
               </Field>
-              <Field label="負責人">
-                <Select
-                  value={assigneeId}
-                  onChange={setAssigneeId}
-                  options={[
-                    { value: "", label: "未指派" },
-                    ...users.map((u) => ({ value: u.id, label: u.name })),
-                  ]}
-                />
+              <Field label="負責人（可多選）">
+                {users.length === 0 ? (
+                  <div className="text-sm text-text-faint px-1 py-1.5">尚無成員</div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {users.map((u) => {
+                      const on = assigneeIds.includes(u.id);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() =>
+                            setAssigneeIds((prev) =>
+                              prev.includes(u.id)
+                                ? prev.filter((x) => x !== u.id)
+                                : [...prev, u.id]
+                            )
+                          }
+                          className={`px-2.5 py-1 rounded-full text-[12px] font-medium cursor-pointer transition-colors ${
+                            on
+                              ? "bg-blue text-white"
+                              : "bg-surface-2 text-text-dim hover:bg-rule-soft"
+                          }`}
+                        >
+                          {on ? "✓ " : ""}
+                          {u.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </Field>
               <Field label="開始日">
                 <input

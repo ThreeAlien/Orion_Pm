@@ -131,9 +131,20 @@ const CreateTaskSchema = z.object({
   priority: z.enum(TASK_PRIORITIES),
   projectId: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
+  // 多負責人；沒給就退回單一 assigneeId（外部 API 相容）
+  assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().optional().nullable(),
   dueDate: z.string().optional().nullable(),
 });
+
+// 統一算負責人清單：優先 assigneeIds，否則退回單一 assigneeId
+function resolveAssigneeIds(data: {
+  assigneeIds?: string[];
+  assigneeId?: string | null;
+}): string[] {
+  const ids = data.assigneeIds ?? (data.assigneeId ? [data.assigneeId] : []);
+  return [...new Set(ids.filter(Boolean))];
+}
 
 export type CreateTaskResult =
   | { ok: true; id: string }
@@ -157,6 +168,7 @@ export async function createTask(
   const nextPosition = (last?.position ?? 0) + 1024;
 
   const actorId = await currentUserId();
+  const assigneeIds = resolveAssigneeIds(data);
   const task = await db.task.create({
     data: {
       title: data.title,
@@ -164,7 +176,8 @@ export async function createTask(
       status: data.status,
       priority: data.priority,
       projectId: data.projectId || null,
-      assigneeId: data.assigneeId || null,
+      assigneeId: assigneeIds[0] ?? null, // 主負責人 = 第一位
+      assignees: { create: assigneeIds.map((userId) => ({ userId })) },
       startDate: data.startDate ? new Date(data.startDate) : null,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
       position: nextPosition,
@@ -216,13 +229,15 @@ const UpdateTaskSchema = z.object({
   priority: z.enum(TASK_PRIORITIES),
   projectId: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
+  assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
 });
 
 export async function updateTask(raw: unknown) {
   const data = UpdateTaskSchema.parse(raw);
-  const newAssigneeId = data.assigneeId || null;
+  const assigneeIds = resolveAssigneeIds(data);
+  const newAssigneeId = assigneeIds[0] ?? null; // 主負責人 = 第一位
   const old = await db.task.findUnique({
     where: { id: data.id },
     select: {
@@ -243,6 +258,11 @@ export async function updateTask(raw: unknown) {
       priority: data.priority,
       projectId: data.projectId || null,
       assigneeId: newAssigneeId,
+      // 同步多負責人：先清掉舊的再建新的
+      assignees: {
+        deleteMany: {},
+        create: assigneeIds.map((userId) => ({ userId })),
+      },
       startDate: data.startDate ? new Date(data.startDate) : null,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
       completedAt: data.status === "DONE" ? new Date() : null,

@@ -90,7 +90,10 @@ export interface ViewTask {
   status: TaskStatus;
   priority: TaskPriority;
   projectId?: string | null;
+  /// 主負責人（denormalized，給 gantt/list 等單一顯示用）
   assignee?: ViewUser;
+  /// 完整負責人清單（多選）
+  assignees?: ViewUser[];
   due?: string;
   duePill?: DuePillKind;
   /// raw ISO string (YYYY-MM-DDTHH:MM:SS.sssZ)，給 drawer / form 預填使用

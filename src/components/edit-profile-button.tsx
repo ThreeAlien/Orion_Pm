@@ -59,19 +59,22 @@ export function EditProfileButton({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(initialName);
-  // avatar：undefined = 不變動；string = 新頭貼；null = 清掉自訂回退 Google
+  // avatar：undefined = 不變動；string = 新上傳照片；null = 清掉自訂照片
   const [avatar, setAvatar] = useState<string | null | undefined>(undefined);
-  const [preview, setPreview] = useState<string | null>(image);
-  const [color, setColor] = useState<string>(avatarColor ?? "blue");
+  // color："" = 不用自訂底色（回退 Google 頭像 / gradient）；token = 用該色當底
+  const [color, setColor] = useState<string>(avatarColor ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 預覽優先序：這次上傳的照片 > 選了底色用色塊 > 原本照片（自訂或 Google）
+  const previewSrc =
+    avatar !== undefined ? avatar : color ? null : image;
 
   useEffect(() => {
     if (open) {
       setName(initialName);
       setAvatar(undefined);
-      setPreview(image);
-      setColor(avatarColor ?? "blue");
+      setColor(avatarColor ?? "");
       setSaving(false);
       setError(null);
     }
@@ -94,7 +97,6 @@ export function EditProfileButton({
     try {
       const webp = await fileToWebp(file);
       setAvatar(webp);
-      setPreview(webp);
       setError(null);
     } catch {
       setError("圖片處理失敗，換一張試試");
@@ -103,7 +105,6 @@ export function EditProfileButton({
 
   function handleClearAvatar() {
     setAvatar(null);
-    setPreview(null);
   }
 
   function handleSave() {
@@ -170,17 +171,19 @@ export function EditProfileButton({
         <div className="px-6 py-5 space-y-4">
           {/* 頭貼 */}
           <div className="flex items-center gap-4">
-            {preview ? (
+            {previewSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={preview}
+                src={previewSrc}
                 alt="頭貼預覽"
                 className="w-16 h-16 rounded-full object-cover ring-1 ring-rule"
               />
             ) : (
               <div
-                className="w-16 h-16 rounded-full text-white font-bold text-2xl flex items-center justify-center"
-                style={{ background: resolveProjectColor(color) }}
+                className={`w-16 h-16 rounded-full text-white font-bold text-2xl flex items-center justify-center ${
+                  color ? "" : "bg-gradient-to-br from-blue to-purple"
+                }`}
+                style={color ? { background: resolveProjectColor(color) } : undefined}
               >
                 {name[0]?.toUpperCase() ?? "?"}
               </div>
@@ -193,13 +196,13 @@ export function EditProfileButton({
               >
                 上傳頭貼
               </button>
-              {preview && (
+              {previewSrc && (
                 <button
                   type="button"
                   onClick={handleClearAvatar}
                   className="px-3 py-1 rounded-lg text-text-faint hover:text-red text-[11px] cursor-pointer text-left"
                 >
-                  移除自訂頭貼
+                  移除照片改用底色
                 </button>
               )}
             </div>
@@ -212,32 +215,42 @@ export function EditProfileButton({
             />
           </div>
 
-          {/* 頭貼底色 — 沒上傳照片時生效（用名字首字 + 這個底色）*/}
-          {!preview && (
-            <div>
-              <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
-                頭貼底色
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {AVATAR_SWATCHES.map((tok) => (
-                  <button
-                    key={tok}
-                    type="button"
-                    onClick={() => setColor(tok)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs transition-transform ${
-                      color === tok
-                        ? "ring-2 ring-text ring-offset-2 ring-offset-surface scale-105"
-                        : "hover:scale-105"
-                    }`}
-                    style={{ background: resolveProjectColor(tok) }}
-                    title={tok}
-                  >
-                    {color === tok ? "✓" : ""}
-                  </button>
-                ))}
-              </div>
+          {/* 頭貼底色 — 永遠可選；有照片時以照片為準，選了底色會蓋過 Google 頭像 */}
+          <div>
+            <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+              頭貼底色
+              <span className="ml-1.5 normal-case font-normal text-text-faint/80">
+                （沒上傳照片時用「名字 + 此底色」）
+              </span>
             </div>
-          )}
+            <div className="flex gap-2 flex-wrap items-center">
+              {AVATAR_SWATCHES.map((tok) => (
+                <button
+                  key={tok}
+                  type="button"
+                  onClick={() => setColor(tok)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs transition-transform ${
+                    color === tok
+                      ? "ring-2 ring-text ring-offset-2 ring-offset-surface scale-105"
+                      : "hover:scale-105"
+                  }`}
+                  style={{ background: resolveProjectColor(tok) }}
+                  title={tok}
+                >
+                  {color === tok ? "✓" : ""}
+                </button>
+              ))}
+              {color && (
+                <button
+                  type="button"
+                  onClick={() => setColor("")}
+                  className="text-[11px] text-text-faint hover:text-text underline ml-1 cursor-pointer"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* 姓名 */}
           <label className="block">

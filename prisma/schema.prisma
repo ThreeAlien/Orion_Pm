@@ -67,6 +67,7 @@ model User {
   ownedProjects Project[]       @relation("ProjectOwner")
   memberOf      ProjectMember[]
   assignedTasks Task[]          @relation("Assignee")
+  taskAssignees TaskAssignee[]
   authoredDocs  Document[]      @relation("DocAuthor")
   comments      Comment[]
   activities    Activity[]
@@ -192,8 +193,11 @@ model Task {
   projectId    String?
   project      Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
+  // 主負責人（denormalized，給外部 API / 活動軌跡用）；完整清單看 assignees
   assigneeId   String?
   assignee     User?            @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  // 多負責人（真正的負責人清單，一個任務可掛多人）
+  assignees    TaskAssignee[]
 
   // 任務階層（Parent ↔ Sub-task，self-relation）
   parentTaskId String?
@@ -219,6 +223,18 @@ model Task {
   @@index([assigneeId, dueDate])
   @@index([parentTaskId])
   @@index([status, position])
+}
+
+// 任務 ↔ 負責人 多對多（一個任務可掛多位負責人）
+model TaskAssignee {
+  taskId String
+  userId String
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([userId])
 }
 
 // 卡片聯繫：task ↔ task 中性關聯（顯示時雙向 union）。跨團隊交流，無 blocking / 排序語意。
