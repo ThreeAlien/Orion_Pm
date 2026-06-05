@@ -45,6 +45,7 @@ import {
 import type { ViewTaskLink, ViewTaskPeek } from "@/server/queries";
 import { RichTextEditor, isRichTextEmpty } from "./rich-text-editor";
 import { RichTextView, htmlToPlainText } from "./rich-text-view";
+import { AssigneePicker } from "./assignee-picker";
 import {
   kanbanColumns,
   type ViewTask,
@@ -785,38 +786,11 @@ export function TaskDrawer({
                 </DrawerField>
                 <div className="sm:col-span-2">
                   <DrawerField label="負責人（可多選）">
-                    {users.length === 0 ? (
-                      <div className="text-sm text-text-faint px-1 py-1.5">
-                        尚無成員
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {users.map((u) => {
-                          const on = assigneeIds.includes(u.id);
-                          return (
-                            <button
-                              key={u.id}
-                              type="button"
-                              onClick={() =>
-                                setAssigneeIds((prev) =>
-                                  prev.includes(u.id)
-                                    ? prev.filter((x) => x !== u.id)
-                                    : [...prev, u.id]
-                                )
-                              }
-                              className={`px-2.5 py-1 rounded-full text-[12px] font-medium cursor-pointer transition-colors ${
-                                on
-                                  ? "bg-blue text-white"
-                                  : "bg-surface-2 text-text-dim hover:bg-rule-soft"
-                              }`}
-                            >
-                              {on ? "✓ " : ""}
-                              {u.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <AssigneePicker
+                      users={users}
+                      selectedIds={assigneeIds}
+                      onChange={setAssigneeIds}
+                    />
                   </DrawerField>
                 </div>
                 <DrawerField label="開始日">

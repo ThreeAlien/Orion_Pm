@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createTask } from "@/server/actions";
+import { AssigneePicker } from "./assignee-picker";
 import type {
   ViewProject,
   ViewUser,
@@ -190,36 +191,11 @@ export function NewTaskDialog({
                 />
               </Field>
               <Field label="負責人（可多選）">
-                {users.length === 0 ? (
-                  <div className="text-sm text-text-faint px-1 py-1.5">尚無成員</div>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {users.map((u) => {
-                      const on = assigneeIds.includes(u.id);
-                      return (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() =>
-                            setAssigneeIds((prev) =>
-                              prev.includes(u.id)
-                                ? prev.filter((x) => x !== u.id)
-                                : [...prev, u.id]
-                            )
-                          }
-                          className={`px-2.5 py-1 rounded-full text-[12px] font-medium cursor-pointer transition-colors ${
-                            on
-                              ? "bg-blue text-white"
-                              : "bg-surface-2 text-text-dim hover:bg-rule-soft"
-                          }`}
-                        >
-                          {on ? "✓ " : ""}
-                          {u.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                <AssigneePicker
+                  users={users}
+                  selectedIds={assigneeIds}
+                  onChange={setAssigneeIds}
+                />
               </Field>
               <Field label="開始日">
                 <input
