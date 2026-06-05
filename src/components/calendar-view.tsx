@@ -1,9 +1,26 @@
-// Calendar 月 / 週視圖 — Phase 2.3
+// Calendar 月 / 週視圖 — Phase 2.3 + Google Calendar 事件疊加
 import Link from "next/link";
 import type { CalendarTask } from "@/server/queries";
-import type { TaskStatus } from "@/lib/data";
+import type { TaskStatus, CalEventItem, GoogleCalStatus } from "@/lib/data";
 import { resolveProjectColor } from "@/lib/data";
 import { ViewToggle } from "./view-toggle";
+import { NewEventButton, EventChip } from "./calendar-events";
+
+// Google 事件依「開始日」分組（key = 本地日期）
+function eventsByDate(events: CalEventItem[]): Map<string, CalEventItem[]> {
+  const map = new Map<string, CalEventItem[]>();
+  for (const e of events) {
+    const d = new Date(e.startIso);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const arr = map.get(key);
+    if (arr) arr.push(e);
+    else map.set(key, [e]);
+  }
+  return map;
+}
+function dayEventKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
@@ -24,39 +41,82 @@ export function CalendarView({
   month,
   weekStart,
   tasks,
+  events,
+  googleStatus,
 }: {
   mode: Mode;
   year: number;
   month: number;
   weekStart?: Date;
   tasks: CalendarTask[];
+  events: CalEventItem[];
+  googleStatus: GoogleCalStatus;
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const evByDate = eventsByDate(events);
 
   return (
     <div className="bg-surface rounded-2xl p-6 shadow-soft flex-1 flex flex-col min-h-0">
-      <Header tasksCount={tasks.length} />
+      <Header
+        tasksCount={tasks.length}
+        eventsCount={events.length}
+        googleStatus={googleStatus}
+      />
       <ModeBar mode={mode} year={year} month={month} weekStart={weekStart} />
 
       {mode === "month" ? (
-        <MonthGrid year={year} month={month} tasks={tasks} today={today} />
+        <MonthGrid
+          year={year}
+          month={month}
+          tasks={tasks}
+          evByDate={evByDate}
+          today={today}
+        />
       ) : (
-        <WeekGrid weekStart={weekStart!} tasks={tasks} today={today} />
+        <WeekGrid
+          weekStart={weekStart!}
+          tasks={tasks}
+          evByDate={evByDate}
+          today={today}
+        />
       )}
     </div>
   );
 }
 
-function Header({ tasksCount }: { tasksCount: number }) {
+function Header({
+  tasksCount,
+  eventsCount,
+  googleStatus,
+}: {
+  tasksCount: number;
+  eventsCount: number;
+  googleStatus: GoogleCalStatus;
+}) {
   return (
-    <div className="flex items-center gap-3.5 mb-4 flex-wrap">
-      <h1 className="text-[28px] font-bold tracking-tight">Calendar</h1>
-      <span className="text-[13px] text-text-dim tabular">
-        {tasksCount} 個任務
-      </span>
-      <div className="flex-1" />
-      <ViewToggle />
+    <div className="mb-4">
+      <div className="flex items-center gap-3.5 flex-wrap">
+        <h1 className="text-[28px] font-bold tracking-tight">Calendar</h1>
+        <span className="text-[13px] text-text-dim tabular">
+          {tasksCount} 任務
+        </span>
+        <span className="text-[13px] text-green tabular">
+          📅 {eventsCount} Google 事件
+        </span>
+        <div className="flex-1" />
+        <NewEventButton />
+        <ViewToggle />
+      </div>
+      {googleStatus !== "ok" && (
+        <div className="mt-3 bg-orange/[.08] border-l-[3px] border-orange rounded-lg px-4 py-2.5 text-xs text-text-dim">
+          {googleStatus === "no_token"
+            ? "尚未連結 Google 行事曆 — 用 Google 重新登入後即可顯示與同步事件。"
+            : googleStatus === "needs_reauth"
+            ? "Google 授權已過期（Testing 模式每 7 天）— 請登出後用 Google 重新登入以恢復同步。"
+            : "Google 行事曆讀取失敗，請稍後重整再試。"}
+        </div>
+      )}
     </div>
   );
 }
@@ -164,11 +224,13 @@ function MonthGrid({
   year,
   month,
   tasks,
+  evByDate,
   today,
 }: {
   year: number;
   month: number;
   tasks: CalendarTask[];
+  evByDate: Map<string, CalEventItem[]>;
   today: Date;
 }) {
   const firstOfMonth = new Date(year, month, 1);
@@ -187,6 +249,7 @@ function MonthGrid({
       isCurrentMonth,
       isToday: isSameDate(date, today),
       tasks: tasksByDate.get(dateKey(date)) ?? [],
+      events: evByDate.get(dayEventKey(date)) ?? [],
     };
   });
 
@@ -221,10 +284,13 @@ function DayCell({
     isCurrentMonth: boolean;
     isToday: boolean;
     tasks: CalendarTask[];
+    events: CalEventItem[];
   };
 }) {
-  const visible = cell.tasks.slice(0, 3);
-  const hidden = cell.tasks.length - visible.length;
+  const evVisible = cell.events.slice(0, 2);
+  const taskVisible = cell.tasks.slice(0, 2);
+  const hidden =
+    cell.events.length - evVisible.length + (cell.tasks.length - taskVisible.length);
 
   return (
     <div
@@ -250,7 +316,10 @@ function DayCell({
         </span>
       </div>
       <div className="flex flex-col gap-0.5 overflow-hidden">
-        {visible.map((t) => (
+        {evVisible.map((e) => (
+          <EventChip key={e.googleEventId} event={e} />
+        ))}
+        {taskVisible.map((t) => (
           <TaskChip key={t.id} task={t} dim={!cell.isCurrentMonth} />
         ))}
         {hidden > 0 && (
@@ -268,10 +337,12 @@ function DayCell({
 function WeekGrid({
   weekStart,
   tasks,
+  evByDate,
   today,
 }: {
   weekStart: Date;
   tasks: CalendarTask[];
+  evByDate: Map<string, CalEventItem[]>;
   today: Date;
 }) {
   const tasksByDate = groupTasksByDate(tasks);
@@ -282,6 +353,7 @@ function WeekGrid({
       isToday: isSameDate(d, today),
       isWeekend: d.getDay() === 0 || d.getDay() === 6,
       tasks: tasksByDate.get(dateKey(d)) ?? [],
+      events: evByDate.get(dayEventKey(d)) ?? [],
     };
   });
 
@@ -315,10 +387,16 @@ function WeekGrid({
             </div>
             <div className="text-[10px] text-text-faint tabular">
               {d.tasks.length} 任務
+              {d.events.length > 0 && (
+                <span className="text-green"> · 📅 {d.events.length}</span>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-1 p-2 overflow-y-auto flex-1">
-            {d.tasks.length === 0 ? (
+            {d.events.map((e) => (
+              <EventChip key={e.googleEventId} event={e} />
+            ))}
+            {d.tasks.length === 0 && d.events.length === 0 ? (
               <div className="text-[11px] text-text-faint p-2">無</div>
             ) : (
               d.tasks.map((t) => <TaskChip key={t.id} task={t} large />)

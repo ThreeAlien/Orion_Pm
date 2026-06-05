@@ -71,7 +71,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Google login → upsert into our User 表
       // 注意：update 不碰 name —— 使用者可能在成員頁自訂過姓名，不能被 Google 每次登入洗掉。
       // image 維持跟 Google 同步（顯示時 avatarUrl 自訂頭貼優先、image 只是 fallback）。
-      await db.user.upsert({
+      const dbUser = await db.user.upsert({
         where: { email: user.email },
         update: {
           image: user.image ?? undefined,
@@ -82,6 +82,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           image: user.image ?? null,
         },
       });
+      // 存 Google token 給 Calendar 用（access_type=offline 才有 refresh_token；
+      // refresh_token 只在首次同意 / prompt=consent 時發，沒有就別覆蓋掉舊的）
+      if (account?.provider === "google" && account.access_token) {
+        await db.googleToken.upsert({
+          where: { userId: dbUser.id },
+          update: {
+            accessToken: account.access_token,
+            ...(account.refresh_token
+              ? { refreshToken: account.refresh_token }
+              : {}),
+            expiresAt: account.expires_at ?? null,
+            scope: account.scope ?? null,
+          },
+          create: {
+            userId: dbUser.id,
+            accessToken: account.access_token,
+            refreshToken: account.refresh_token ?? null,
+            expiresAt: account.expires_at ?? null,
+            scope: account.scope ?? null,
+          },
+        });
+      }
       return true;
     },
     async jwt({ token, user }) {

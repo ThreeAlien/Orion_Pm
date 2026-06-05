@@ -69,10 +69,50 @@ model User {
   comments      Comment[]
   activities    Activity[]
 
+  // Google Calendar 串接（token 落地 + 我方建立的事件對應）
+  googleToken    GoogleToken?
+  calendarEvents CalendarEvent[] @relation("UserCalendarEvents")
+
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
   @@index([email])
+}
+
+// 使用者的 Google OAuth token（JWT 策略下沒有 Account 表，自存一張）。
+// access token 會過期 → 用 refresh token 換新；refresh token 在 Testing 模式 7 天到期需重新授權。
+model GoogleToken {
+  userId       String   @id
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String?
+  refreshToken String?
+  /// access token 到期的 unix 秒數
+  expiresAt    Int?
+  scope        String?
+  updatedAt    DateTime @updatedAt
+}
+
+// 行事曆「事件」（跟任務分開）。我方建立的會 push 到 Google 並存 googleEventId 以便日後 update/delete。
+model CalendarEvent {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation("UserCalendarEvents", fields: [userId], references: [id], onDelete: Cascade)
+  /// 對應的 Google 事件 id（我方建立 push 成功後寫入）；null = 尚未同步 / 純本地
+  googleEventId    String?
+  /// 通常是 "primary"（使用者主行事曆）
+  googleCalendarId String   @default("primary")
+  title            String
+  description      String?
+  location         String?
+  start            DateTime
+  end              DateTime
+  allDay           Boolean  @default(false)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, start])
+  @@index([googleEventId])
 }
 
 model Project {

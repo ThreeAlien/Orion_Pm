@@ -268,30 +268,32 @@ function UserMenu({
   }
 
   return (
-    <div className="mt-auto p-2.5 flex items-center gap-2.5 rounded-lg hover:bg-rule-soft group">
-      {user.image ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={user.image}
-          alt={user.name}
-          className="w-8 h-8 rounded-full object-cover"
-        />
-      ) : (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue to-purple text-white font-semibold text-[13px] flex items-center justify-center">
-          {initial}
+    <div className="mt-auto pt-2 border-t border-rule">
+      <div className="flex items-center gap-2.5 px-1.5 py-1.5">
+        {user.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.image}
+            alt={user.name}
+            className="w-8 h-8 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue to-purple text-white font-semibold text-[13px] flex items-center justify-center">
+            {initial}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-[13px] truncate">{user.name}</div>
+          <div className="text-[11px] text-text-dim">線上</div>
         </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="font-semibold text-[13px] truncate">{user.name}</div>
-        <div className="text-[11px] text-text-dim">線上</div>
       </div>
       <button
         type="button"
         onClick={() => signOut({ callbackUrl: "/login" })}
-        className="w-7 h-7 rounded-md text-text-faint hover:text-red hover:bg-red/[.08] flex items-center justify-center cursor-pointer transition-opacity"
-        title="登出"
+        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[13px] font-medium text-text-dim hover:text-red hover:bg-red/[.08] cursor-pointer transition-colors"
       >
-        ↩
+        <span className="text-base leading-none">↩</span>
+        登出
       </button>
     </div>
   );

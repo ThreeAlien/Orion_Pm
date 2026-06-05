@@ -62,6 +62,20 @@ export interface ViewTeam {
   sort: number;
 }
 
+// Google 行事曆事件（顯示用，日期用 ISO 字串方便傳給 client island）
+export interface CalEventItem {
+  googleEventId: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  startIso: string;
+  endIso: string;
+  allDay: boolean;
+}
+
+// 行事曆讀 Google 的狀態：ok / 未連結 / 授權過期 / API 讀取失敗
+export type GoogleCalStatus = "ok" | "no_token" | "needs_reauth" | "api_error";
+
 export interface ViewTask {
   id: string;
   title: string;

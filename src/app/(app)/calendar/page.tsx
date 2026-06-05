@@ -1,6 +1,38 @@
 import { CalendarView } from "@/components/calendar-view";
 import { fetchCalendarTasks, fetchCalendarRangeTasks } from "@/server/queries";
 import { getTeamScope, inTeamScope } from "@/lib/team-scope";
+import { listGoogleEvents } from "@/server/google-calendar";
+import { auth } from "@/auth";
+import type { CalEventItem, GoogleCalStatus } from "@/lib/data";
+
+// 讀登入者的 Google 事件（純 proxy）+ 回傳狀態（未連結 / 授權過期 → 前台提示重新登入）
+async function loadGoogleEvents(
+  userId: string | undefined,
+  start: Date,
+  end: Date
+): Promise<{ events: CalEventItem[]; status: GoogleCalStatus }> {
+  if (!userId) return { events: [], status: "no_token" };
+  let res;
+  try {
+    res = await listGoogleEvents(userId, start, end);
+  } catch {
+    // 網路 / 例外不能讓整個行事曆頁 500，降級成讀取失敗提示
+    return { events: [], status: "api_error" };
+  }
+  if (!res.ok) return { events: [], status: res.reason };
+  return {
+    events: res.events.map((e) => ({
+      googleEventId: e.googleEventId,
+      title: e.title,
+      description: e.description,
+      location: e.location,
+      startIso: e.start.toISOString(),
+      endIso: e.end.toISOString(),
+      allDay: e.allDay,
+    })),
+    status: "ok",
+  };
+}
 
 export default async function CalendarPage({
   searchParams,
@@ -10,6 +42,8 @@ export default async function CalendarPage({
   const params = await searchParams;
   const view = params.view === "week" ? "week" : "month";
   const scope = await getTeamScope();
+  const session = await auth();
+  const uid = session?.user?.id;
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
@@ -29,6 +63,7 @@ export default async function CalendarPage({
     const tasks = (await fetchCalendarRangeTasks(weekStart, weekEnd)).filter(
       (t) => inTeamScope(t.teamSlug, scope)
     );
+    const { events, status } = await loadGoogleEvents(uid, weekStart, weekEnd);
     return (
       <CalendarView
         mode="week"
@@ -36,6 +71,8 @@ export default async function CalendarPage({
         month={weekStart.getMonth()}
         weekStart={weekStart}
         tasks={tasks}
+        events={events}
+        googleStatus={status}
       />
     );
   }
@@ -47,10 +84,10 @@ export default async function CalendarPage({
     const match = params.m.match(/^(\d{4})-(\d{1,2})$/);
     if (match) {
       const y = Number(match[1]);
-      const m = Number(match[2]);
-      if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
+      const mm = Number(match[2]);
+      if (!isNaN(y) && !isNaN(mm) && mm >= 1 && mm <= 12) {
         year = y;
-        month = m - 1;
+        month = mm - 1;
       }
     }
   }
@@ -58,7 +95,18 @@ export default async function CalendarPage({
   const tasks = (await fetchCalendarTasks(year, month)).filter((t) =>
     inTeamScope(t.teamSlug, scope)
   );
+  // 涵蓋月曆網格前後補格（上/下個月露出的日子）
+  const gStart = new Date(year, month, -6);
+  const gEnd = new Date(year, month + 1, 8);
+  const { events, status } = await loadGoogleEvents(uid, gStart, gEnd);
   return (
-    <CalendarView mode="month" year={year} month={month} tasks={tasks} />
+    <CalendarView
+      mode="month"
+      year={year}
+      month={month}
+      tasks={tasks}
+      events={events}
+      googleStatus={status}
+    />
   );
 }
