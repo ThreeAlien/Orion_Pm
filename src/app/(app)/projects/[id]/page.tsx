@@ -3,13 +3,14 @@ import {
   fetchTasks,
   fetchProjects,
   fetchUsers,
+  fetchTeams,
 } from "@/server/queries";
 import { KanbanBoard } from "@/components/kanban-board";
 import { EditProjectButton } from "@/components/edit-project-button";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { ViewProjectDetail } from "@/server/queries";
-import type { ProjectStatus, ViewUser } from "@/lib/data";
+import type { ProjectStatus, ViewUser, ViewTeam } from "@/lib/data";
 import { resolveProjectColor } from "@/lib/data";
 
 const statusMap: Record<ProjectStatus, { label: string; bg: string; dot: string }> = {
@@ -25,11 +26,12 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [project, tasks, projects, users] = await Promise.all([
+  const [project, tasks, projects, users, teams] = await Promise.all([
     fetchProjectDetail(id),
     fetchTasks(),
     fetchProjects(),
     fetchUsers(),
+    fetchTeams(),
   ]);
   if (!project) notFound();
 
@@ -37,7 +39,7 @@ export default async function ProjectDetailPage({
 
   return (
     <div className="bg-surface rounded-2xl p-6 shadow-soft flex-1 flex flex-col min-h-0">
-      <DetailHeader project={project} users={users} />
+      <DetailHeader project={project} users={users} teams={teams} />
       <KanbanBoard tasks={projectTasks} projects={projects} users={users} />
     </div>
   );
@@ -46,9 +48,11 @@ export default async function ProjectDetailPage({
 function DetailHeader({
   project,
   users,
+  teams,
 }: {
   project: ViewProjectDetail;
   users: ViewUser[];
+  teams: ViewTeam[];
 }) {
   const status = statusMap[project.status];
   const dot = resolveProjectColor(project.color);
@@ -76,11 +80,11 @@ function DetailHeader({
           {status.label}
         </span>
         <div className="flex-1" />
-        <EditProjectButton project={project} users={users} />
+        <EditProjectButton project={project} users={users} teams={teams} />
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <Stat label="完成率" value={`${project.completionRate}%`} accent={dot} />
         <Stat
           label="任務"

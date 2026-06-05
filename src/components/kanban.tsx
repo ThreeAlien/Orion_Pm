@@ -40,7 +40,7 @@ function DashboardHeader({ stats }: { stats: DashboardStats }) {
   return (
     <div className="flex items-center gap-3.5 mb-4 flex-wrap">
       <h1 className="text-[28px] font-bold tracking-tight">Dashboard</h1>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <StatChip>
           <b className="tabular">{stats.total}</b> 總任務
         </StatChip>

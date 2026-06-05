@@ -1,6 +1,6 @@
 // Projects 列表頁 — 卡片 grid
 import type { ViewProjectDetail } from "@/server/queries";
-import type { ProjectStatus, ViewUser } from "@/lib/data";
+import type { ProjectStatus, ViewUser, ViewTeam } from "@/lib/data";
 import { resolveProjectColor } from "@/lib/data";
 import { NewProjectButton } from "./new-project-button";
 import { ArchiveProjectButton } from "./archive-project-button";
@@ -16,10 +16,12 @@ const statusMap: Record<ProjectStatus, { label: string; bg: string; dot: string 
 export function ProjectsList({
   projects,
   users,
+  teams,
   currentUserId,
 }: {
   projects: ViewProjectDetail[];
   users: ViewUser[];
+  teams: ViewTeam[];
   currentUserId?: string;
 }) {
   return (
@@ -30,7 +32,7 @@ export function ProjectsList({
           {projects.length} 個專案
         </span>
         <div className="flex-1" />
-        <NewProjectButton users={users} currentUserId={currentUserId} />
+        <NewProjectButton users={users} teams={teams} currentUserId={currentUserId} />
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
@@ -71,11 +73,16 @@ function ProjectCard({ project }: { project: ViewProjectDetail }) {
             </div>
             <ArchiveProjectButton id={project.id} name={project.name} />
           </div>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold ${status.bg}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
               {status.label}
             </span>
+            {project.teamName && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rule-soft text-text-dim">
+                {project.teamName}
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ import type {
   ViewTimelineItem,
   TimelineAuthor,
   ViewChecklistItem,
-  ViewDependencies,
+  ViewTeam,
 } from "@/lib/data";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -102,8 +102,9 @@ export async function fetchTeamMembers(): Promise<ViewMember[]> {
   return rows.map((u) => ({
     id: u.id,
     name: u.name,
+    // 自訂頭貼（avatarUrl）優先，沒設才回退 Google 帶入的 image
+    image: u.avatarUrl ?? u.image,
     email: u.email,
-    image: u.image,
     initial: u.name[0]?.toUpperCase() ?? "?",
     gradient: pickGradient(u.name),
     joinedAt: u.createdAt,
@@ -119,6 +120,7 @@ export async function fetchProjects(): Promise<ViewProject[]> {
     orderBy: { createdAt: "asc" },
     include: {
       _count: { select: { tasks: { where: { archived: false } } } },
+      team: { select: { id: true, slug: true, name: true } },
     },
   });
   return rows.map((p) => ({
@@ -126,6 +128,32 @@ export async function fetchProjects(): Promise<ViewProject[]> {
     name: p.name,
     color: p.color as ProjectColor,
     taskCount: p._count.tasks,
+    teamId: p.team?.id ?? null,
+    teamSlug: p.team?.slug ?? null,
+    teamName: p.team?.name ?? null,
+  }));
+}
+
+// sidebar / topbar 顯示用：當前使用者的顯示名稱 + 解析後頭像（自訂 avatarUrl 優先）
+export async function fetchUserAvatar(
+  id: string
+): Promise<{ name: string; image: string | null } | null> {
+  const u = await db.user.findUnique({
+    where: { id },
+    select: { name: true, image: true, avatarUrl: true },
+  });
+  if (!u) return null;
+  return { name: u.name, image: u.avatarUrl ?? u.image };
+}
+
+export async function fetchTeams(): Promise<ViewTeam[]> {
+  const rows = await db.team.findMany({ orderBy: { sort: "asc" } });
+  return rows.map((t) => ({
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    color: t.color as ProjectColor,
+    sort: t.sort,
   }));
 }
 
@@ -138,6 +166,8 @@ export interface ViewProjectDetail {
   endDate: Date | null;
   ownerId: string;
   ownerName: string;
+  teamId: string | null;
+  teamName: string | null;
   totalTasks: number;
   completedTasks: number;
   completionRate: number;
@@ -150,6 +180,7 @@ export async function fetchProjectDetail(
     where: { id, archived: false },
     include: {
       owner: { select: { id: true, name: true } },
+      team: { select: { id: true, name: true } },
       tasks: { where: { archived: false }, select: { status: true } },
     },
   });
@@ -164,7 +195,9 @@ export async function fetchProjectDetail(
     startDate: p.startDate,
     endDate: p.endDate,
     ownerId: p.ownerId,
-      ownerName: p.owner.name,
+    ownerName: p.owner.name,
+    teamId: p.team?.id ?? null,
+    teamName: p.team?.name ?? null,
     totalTasks: total,
     completedTasks: done,
     completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
@@ -177,6 +210,7 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
     orderBy: { createdAt: "asc" },
     include: {
       owner: { select: { id: true, name: true } },
+      team: { select: { id: true, name: true } },
       tasks: { where: { archived: false }, select: { status: true } },
     },
   });
@@ -192,6 +226,8 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
       endDate: p.endDate,
       ownerId: p.ownerId,
       ownerName: p.owner.name,
+      teamId: p.team?.id ?? null,
+      teamName: p.team?.name ?? null,
       totalTasks: total,
       completedTasks: done,
       completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
@@ -230,6 +266,7 @@ export interface CalendarTask {
   projectId: string | null;
   projectColor: ProjectColor | null;
   projectName: string | null;
+  teamSlug: string | null;
   dueDate: Date;
 }
 
@@ -244,7 +281,7 @@ export async function fetchCalendarRangeTasks(
     },
     orderBy: { dueDate: "asc" },
     include: {
-      project: { select: { name: true, color: true } },
+      project: { select: { name: true, color: true, team: { select: { slug: true } } } },
     },
   });
   return rows
@@ -257,6 +294,7 @@ export async function fetchCalendarRangeTasks(
       projectId: r.projectId,
       projectColor: r.project ? (r.project.color as ProjectColor) : null,
       projectName: r.project?.name ?? null,
+      teamSlug: r.project?.team?.slug ?? null,
       dueDate: r.dueDate!,
     }));
 }
@@ -373,7 +411,6 @@ export interface GanttTask {
   completionRate: number;
   projectColor: ProjectColor | null;
   assigneeName: string | null;
-  blockedByIds: string[];
 }
 
 export async function fetchGanttTasks(projectId: string): Promise<GanttTask[]> {
@@ -389,7 +426,6 @@ export async function fetchGanttTasks(projectId: string): Promise<GanttTask[]> {
       dueDate: true,
       project: { select: { color: true } },
       assignee: { select: { name: true } },
-      blockedBy: { select: { blockerId: true } },
     },
   });
   const DAY = 24 * 60 * 60 * 1000;
@@ -417,7 +453,6 @@ export async function fetchGanttTasks(projectId: string): Promise<GanttTask[]> {
       completionRate,
       projectColor: t.project ? (t.project.color as ProjectColor) : null,
       assigneeName: t.assignee?.name ?? null,
-      blockedByIds: t.blockedBy.map((b) => b.blockerId),
     };
   });
 }
@@ -432,6 +467,7 @@ export interface GanttProject {
   completedTasks: number;
   completionRate: number;
   isCompleted: boolean;
+  teamSlug: string | null;
 }
 
 export async function fetchGanttProjects(): Promise<GanttProject[]> {
@@ -440,6 +476,7 @@ export async function fetchGanttProjects(): Promise<GanttProject[]> {
     orderBy: { createdAt: "asc" },
     include: {
       tasks: { where: { archived: false }, select: { status: true } },
+      team: { select: { slug: true } },
     },
   });
   return rows.map((p) => {
@@ -455,6 +492,7 @@ export async function fetchGanttProjects(): Promise<GanttProject[]> {
       completedTasks: done,
       completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
       isCompleted: p.status === "DONE",
+      teamSlug: p.team?.slug ?? null,
     };
   });
 }
@@ -465,7 +503,7 @@ export async function fetchTasks(): Promise<ViewTask[]> {
     orderBy: [{ status: "asc" }, { position: "asc" }],
     include: {
       assignee: true,
-      blockedBy: { take: 1, select: { blockerId: true } },
+      project: { select: { team: { select: { slug: true } } } },
       subtasks: { select: { id: true, status: true } },
       checklist: { select: { done: true } },
       _count: { select: { comments: true } },
@@ -497,44 +535,110 @@ export async function fetchTasks(): Promise<ViewTask[]> {
         checklistTotal > 0
           ? { done: checklistDone, total: checklistTotal }
           : undefined,
-      hasDependency: t.blockedBy.length > 0,
       commentCount: t._count.comments,
+      teamSlug: t.project?.team?.slug ?? null,
     };
   });
 }
 
-// 某任務的依賴：被誰阻擋（blockedBy）+ 阻擋了誰（blocking）
-export async function fetchTaskDependencies(
-  taskId: string
-): Promise<ViewDependencies> {
-  const task = await db.task.findUnique({
-    where: { id: taskId },
+// ==== 卡片聯繫（TaskLink）====
+
+export interface ViewTaskLink {
+  id: string; // 對面那張卡的 id
+  title: string;
+  status: import("@/lib/data").TaskStatus;
+  teamName: string | null;
+  projectName: string | null;
+}
+
+// 某任務的聯繫卡片：雙向 union（A→B 與 B→A 都算），回傳「對面那張卡」，去重。
+export async function fetchTaskLinks(taskId: string): Promise<ViewTaskLink[]> {
+  const sel = {
     select: {
-      blockedBy: {
-        select: {
-          blocker: { select: { id: true, title: true, status: true } },
-        },
-      },
-      blocking: {
-        select: {
-          blocked: { select: { id: true, title: true, status: true } },
-        },
-      },
+      id: true,
+      title: true,
+      status: true,
+      project: { select: { name: true, team: { select: { name: true } } } },
+    },
+  } as const;
+  const rows = await db.taskLink.findMany({
+    where: { OR: [{ taskId }, { linkedId: taskId }] },
+    include: { task: sel, linked: sel },
+    orderBy: { createdAt: "asc" },
+  });
+  const seen = new Set<string>();
+  const out: ViewTaskLink[] = [];
+  for (const r of rows) {
+    const other = r.taskId === taskId ? r.linked : r.task;
+    if (seen.has(other.id)) continue;
+    seen.add(other.id);
+    out.push({
+      id: other.id,
+      title: other.title,
+      status: other.status,
+      teamName: other.project?.team?.name ?? null,
+      projectName: other.project?.name ?? null,
+    });
+  }
+  return out;
+}
+
+export interface ViewTaskPeek {
+  id: string;
+  title: string;
+  description: string | null;
+  status: import("@/lib/data").TaskStatus;
+  priority: import("@/lib/data").TaskPriority;
+  assigneeName: string | null;
+  projectName: string | null;
+  teamName: string | null;
+  dueIso: string | null;
+}
+
+// peek 預覽：點聯繫卡片時跳出的唯讀詳情
+export async function fetchTaskPeek(id: string): Promise<ViewTaskPeek | null> {
+  const t = await db.task.findUnique({
+    where: { id },
+    include: {
+      assignee: { select: { name: true } },
+      project: { select: { name: true, team: { select: { name: true } } } },
     },
   });
-  if (!task) return { blockedBy: [], blocking: [] };
+  if (!t) return null;
   return {
-    blockedBy: task.blockedBy.map((d) => ({
-      id: d.blocker.id,
-      title: d.blocker.title,
-      status: d.blocker.status,
-    })),
-    blocking: task.blocking.map((d) => ({
-      id: d.blocked.id,
-      title: d.blocked.title,
-      status: d.blocked.status,
-    })),
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    status: t.status,
+    priority: t.priority,
+    assigneeName: t.assignee?.name ?? null,
+    projectName: t.project?.name ?? null,
+    teamName: t.project?.team?.name ?? null,
+    dueIso: t.dueDate ? t.dueDate.toISOString() : null,
   };
+}
+
+// 可聯繫的候選卡片（picker 用）：所有未封存任務，排除自己；前端再過濾已聯繫 + 關鍵字。
+export async function fetchLinkableTasks(
+  taskId: string
+): Promise<ViewTaskLink[]> {
+  const rows = await db.task.findMany({
+    where: { archived: false, id: { not: taskId } },
+    orderBy: [{ updatedAt: "desc" }],
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      project: { select: { name: true, team: { select: { name: true } } } },
+    },
+  });
+  return rows.map((t) => ({
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    teamName: t.project?.team?.name ?? null,
+    projectName: t.project?.name ?? null,
+  }));
 }
 
 // 某任務的工作清單，依 position 正序

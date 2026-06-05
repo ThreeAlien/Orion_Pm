@@ -2,21 +2,26 @@
 "use client";
 
 import { useState } from "react";
-import type { ViewProject, ViewUser } from "@/lib/data";
+import type { ViewProject, ViewUser, ViewTeam } from "@/lib/data";
 import { resolveProjectColor } from "@/lib/data";
 import { NavItem } from "./nav-item";
+import { TeamFilter } from "./team-filter";
 import { Topbar } from "./topbar";
 import { signOut } from "next-auth/react";
 
 export function ResponsiveLayout({
   projects,
   users,
+  teams,
+  teamScope,
   sessionUser,
   currentUserId,
   children,
 }: {
   projects: ViewProject[];
   users: ViewUser[];
+  teams: ViewTeam[];
+  teamScope: string;
   sessionUser: { name: string; image: string | null } | null;
   currentUserId: string | undefined;
   children: React.ReactNode;
@@ -90,6 +95,10 @@ export function ResponsiveLayout({
           >
             ›
           </button>
+        )}
+
+        {teams.length > 0 && (
+          <TeamFilter teams={teams} scope={teamScope} collapsed={collapsed} />
         )}
 
         <NavBlock label="主要" collapsed={collapsed}>

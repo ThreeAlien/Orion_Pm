@@ -1,15 +1,19 @@
 import { KanbanDashboard } from "@/components/kanban";
 import { fetchTasks, fetchProjects, fetchUsers } from "@/server/queries";
 import { computeDashboardStats } from "@/lib/data";
+import { getTeamScope, inTeamScope } from "@/lib/team-scope";
 import { auth } from "@/auth";
 
 export default async function DashboardPage() {
-  const [tasks, projects, users, session] = await Promise.all([
+  const [allTasks, allProjects, users, scope, session] = await Promise.all([
     fetchTasks(),
     fetchProjects(),
     fetchUsers(),
+    getTeamScope(),
     auth(),
   ]);
+  const tasks = allTasks.filter((t) => inTeamScope(t.teamSlug, scope));
+  const projects = allProjects.filter((p) => inTeamScope(p.teamSlug, scope));
   const stats = computeDashboardStats(tasks);
 
   return (

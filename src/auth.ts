@@ -69,10 +69,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return false;
       }
       // Google login → upsert into our User 表
+      // 注意：update 不碰 name —— 使用者可能在成員頁自訂過姓名，不能被 Google 每次登入洗掉。
+      // image 維持跟 Google 同步（顯示時 avatarUrl 自訂頭貼優先、image 只是 fallback）。
       await db.user.upsert({
         where: { email: user.email },
         update: {
-          name: user.name ?? undefined,
           image: user.image ?? undefined,
         },
         create: {

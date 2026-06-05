@@ -36,10 +36,15 @@ import {
   deleteChecklistItem,
   reorderChecklistItem,
   getTaskChecklist,
-  addDependency,
-  removeDependency,
-  getTaskDependencies,
+  getTaskLinks,
+  getLinkableTasks,
+  addTaskLink,
+  removeTaskLink,
+  getTaskPeek,
 } from "@/server/actions";
+import type { ViewTaskLink, ViewTaskPeek } from "@/server/queries";
+import { RichTextEditor, isRichTextEmpty } from "./rich-text-editor";
+import { RichTextView, htmlToPlainText } from "./rich-text-view";
 import {
   kanbanColumns,
   type ViewTask,
@@ -52,7 +57,6 @@ import {
   type ViewActivity,
   type TimelineAuthor,
   type ViewChecklistItem,
-  type ViewDependencies,
   resolveProjectColor,
   projectChipStyle,
 } from "@/lib/data";
@@ -99,7 +103,8 @@ export function KanbanBoard({
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     new Set()
   );
-  const [onlyMine, setOnlyMine] = useState(false);
+  // 負責人篩選：'' = 全部；否則為某 user id（含自己）。可看任何人的任務，不再只有「我的」
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("");
   const [, startTransition] = useTransition();
   const router = useRouter();
 
@@ -159,11 +164,7 @@ export function KanbanBoard({
         selectedProjectIds.size === 0 ||
         (t.projectId && selectedProjectIds.has(t.projectId))
     )
-    .filter(
-      (t) =>
-        !onlyMine ||
-        (currentUserId !== undefined && t.assignee?.id === currentUserId)
-    );
+    .filter((t) => !assigneeFilter || t.assignee?.id === assigneeFilter);
 
   function toggleProjectFilter(id: string) {
     setSelectedProjectIds((prev) => {
@@ -187,9 +188,10 @@ export function KanbanBoard({
           selectedProjectIds={selectedProjectIds}
           onToggle={toggleProjectFilter}
           onClear={clearProjectFilter}
-          onlyMine={onlyMine}
-          onToggleOnlyMine={() => setOnlyMine((m) => !m)}
-          canFilterMine={!!currentUserId}
+          users={users ?? []}
+          assigneeFilter={assigneeFilter}
+          onAssigneeChange={setAssigneeFilter}
+          currentUserId={currentUserId}
         />
       )}
       <DndContext
@@ -231,7 +233,6 @@ export function KanbanBoard({
           task={selected}
           projects={projects}
           users={users ?? []}
-          allTasks={tasks}
           currentUserId={currentUserId}
           onClose={() => setSelectedId(null)}
         />
@@ -248,20 +249,25 @@ function FilterRow({
   selectedProjectIds,
   onToggle,
   onClear,
-  onlyMine,
-  onToggleOnlyMine,
-  canFilterMine,
+  users,
+  assigneeFilter,
+  onAssigneeChange,
+  currentUserId,
 }: {
   projects: ViewProject[];
   totalTasks: number;
   selectedProjectIds: Set<string>;
   onToggle: (id: string) => void;
   onClear: () => void;
-  onlyMine: boolean;
-  onToggleOnlyMine: () => void;
-  canFilterMine: boolean;
+  users: ViewUser[];
+  assigneeFilter: string;
+  onAssigneeChange: (id: string) => void;
+  currentUserId?: string;
 }) {
   const noFilter = selectedProjectIds.size === 0;
+  // 把自己排在選單最前面（標「（我）」），其餘成員照名稱
+  const me = users.find((u) => u.id === currentUserId);
+  const others = users.filter((u) => u.id !== currentUserId);
   return (
     <div className="flex gap-2 items-center flex-wrap pb-4 mb-[18px] border-b border-rule">
       <span className="text-xs text-text-faint mr-1">篩選</span>
@@ -275,10 +281,25 @@ function FilterRow({
           {totalTasks}
         </span>
       </FilterChip>
-      {canFilterMine && (
-        <FilterChip active={onlyMine} onClick={onToggleOnlyMine}>
-          👤 只看我的
-        </FilterChip>
+      {users.length > 0 && (
+        <select
+          value={assigneeFilter}
+          onChange={(e) => onAssigneeChange(e.target.value)}
+          className={`px-2.5 py-[5px] rounded-full text-[13px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
+            assigneeFilter
+              ? "bg-text text-surface"
+              : "bg-rule-soft text-text hover:bg-[#EAEAEF]"
+          }`}
+          title="依負責人篩選"
+        >
+          <option value="">👤 所有負責人</option>
+          {me && <option value={me.id}>{me.name}（我）</option>}
+          {others.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
       )}
       {projects.map((p) => {
         const active = selectedProjectIds.has(p.id);
@@ -470,11 +491,6 @@ function TaskCardInner({
             🔥 高
           </span>
         )}
-        {task.hasDependency && (
-          <span className="inline-flex items-center gap-0.5 text-[11px] text-orange font-semibold ml-auto">
-            ⛓ 依賴
-          </span>
-        )}
       </div>
 
       <div
@@ -487,7 +503,7 @@ function TaskCardInner({
 
       {task.description && (
         <div className="text-xs text-text-dim leading-relaxed mb-2.5 line-clamp-2">
-          {task.description}
+          {htmlToPlainText(task.description)}
         </div>
       )}
 
@@ -535,14 +551,12 @@ export function TaskDrawer({
   task,
   projects,
   users,
-  allTasks,
   currentUserId,
   onClose,
 }: {
   task: ViewTask | null;
   projects: ViewProject[];
   users: ViewUser[];
-  allTasks?: ViewTask[];
   currentUserId?: string;
   onClose: () => void;
 }) {
@@ -660,7 +674,7 @@ export function TaskDrawer({
       await updateTask({
         id: task.id,
         title,
-        description: description || null,
+        description: isRichTextEmpty(description) ? null : description,
         status,
         priority,
         projectId: projectId || null,
@@ -696,7 +710,7 @@ export function TaskDrawer({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`bg-surface rounded-2xl shadow-2xl w-full sm:w-[640px] max-w-[92vw] max-h-[88dvh] flex flex-col overflow-hidden transition-transform duration-200 ease-out ${
+        className={`bg-surface rounded-2xl shadow-2xl w-full sm:w-[1040px] max-w-[92vw] max-h-[88dvh] flex flex-col overflow-hidden transition-transform duration-200 ease-out ${
           open ? "scale-100" : "scale-95"
         }`}
       >
@@ -716,19 +730,20 @@ export function TaskDrawer({
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto px-6 py-5 space-y-4">
+            <div className="flex-1 overflow-auto px-6 py-5">
+              <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-x-6 gap-y-4">
+              {/* 左欄：欄位編輯 */}
+              <div className="space-y-4 min-w-0">
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-transparent border-0 text-2xl font-bold tracking-tight leading-tight focus:outline-none focus:bg-surface-2 rounded-md px-2 -mx-2 py-1"
-                placeholder="任務標題"
+                className="w-full bg-transparent border border-transparent hover:border-rule hover:bg-surface-2 text-2xl font-bold tracking-tight leading-tight focus:outline-none focus:border-blue focus:bg-surface-2 rounded-md px-2 -mx-2 py-1 transition-colors cursor-text"
+                placeholder="任務標題（點此即可編輯）"
               />
 
-              <textarea
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue focus:bg-surface resize-none"
+                onChange={setDescription}
                 placeholder="描述（選填）"
               />
 
@@ -796,11 +811,13 @@ export function TaskDrawer({
                 💡 拖拉看板卡片直接改狀態，或在這裡編輯後按下方「儲存」。
               </div>
 
-              <DependencySection task={task} allTasks={allTasks ?? []} />
-
               <ChecklistSection taskId={task.id} />
 
-              <div className="pt-4 border-t border-rule">
+              <LinkSection taskId={task.id} />
+              </div>
+
+              {/* 右欄：留言與動態（寬螢幕並排，省去縱向捲動）*/}
+              <div className="min-w-0 pt-4 border-t border-rule lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
                 <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-3">
                   留言與動態
                 </div>
@@ -850,16 +867,15 @@ export function TaskDrawer({
                             </div>
                             {editingId === item.id ? (
                               <div className="mt-1 space-y-1.5">
-                                <textarea
+                                <RichTextEditor
                                   value={editBody}
-                                  onChange={(e) => setEditBody(e.target.value)}
-                                  rows={2}
-                                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface resize-none"
+                                  onChange={setEditBody}
+                                  placeholder="編輯留言…"
                                 />
                                 <div className="flex items-center gap-2">
                                   <button
                                     onClick={handleSaveEdit}
-                                    disabled={!editBody.trim()}
+                                    disabled={isRichTextEmpty(editBody)}
                                     className="bg-blue text-white px-3 py-1 rounded-md text-xs font-semibold cursor-pointer hover:brightness-95 disabled:opacity-40"
                                   >
                                     更新
@@ -873,9 +889,10 @@ export function TaskDrawer({
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-sm text-text-dim whitespace-pre-wrap break-words mt-0.5">
-                                {item.body}
-                              </p>
+                              <RichTextView
+                                html={item.body}
+                                className="text-sm text-text-dim break-words mt-0.5"
+                              />
                             )}
                           </div>
                         </li>
@@ -901,31 +918,24 @@ export function TaskDrawer({
                 )}
 
                 <div className="mt-3 flex flex-col gap-2">
-                  <textarea
+                  <RichTextEditor
                     value={commentBody}
-                    onChange={(e) => setCommentBody(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handlePostComment();
-                      }
-                    }}
-                    rows={2}
-                    placeholder="留言…（Enter 送出，Shift+Enter 換行）"
-                    className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface resize-none"
+                    onChange={setCommentBody}
+                    placeholder="留言…"
                   />
                   <button
                     onClick={handlePostComment}
-                    disabled={!commentBody.trim() || posting}
+                    disabled={isRichTextEmpty(commentBody) || posting}
                     className="self-end bg-blue text-white px-4 py-1.5 rounded-lg font-semibold text-sm cursor-pointer hover:brightness-95 disabled:opacity-40"
                   >
                     {posting ? "送出中…" : "送出留言"}
                   </button>
                 </div>
               </div>
+              </div>
             </div>
 
-            <div className="px-6 py-3 border-t border-rule flex items-center gap-2">
+            <div className="px-6 py-3 border-t border-rule flex flex-wrap items-center gap-2">
               <button
                 onClick={handleArchive}
                 className="px-3 py-2 rounded-lg bg-red/[.08] hover:bg-red/[.16] border border-red/30 text-red text-sm font-semibold cursor-pointer"
@@ -956,190 +966,6 @@ export function TaskDrawer({
 }
 
 // ==== 任務依賴（drawer 內）====
-
-function statusLabel(s: TaskStatus): string {
-  return statusOptions.find((o) => o.value === s)?.label ?? s;
-}
-
-function DependencySection({
-  task,
-  allTasks,
-}: {
-  task: ViewTask;
-  allTasks: ViewTask[];
-}) {
-  const router = useRouter();
-  const [deps, setDeps] = useState<ViewDependencies>({
-    blockedBy: [],
-    blocking: [],
-  });
-  const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState("");
-  const [showDone, setShowDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setQuery("");
-    getTaskDependencies(task.id).then((d) => {
-      if (!cancelled) {
-        setDeps(d);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [task.id]);
-
-  async function refetch() {
-    setDeps(await getTaskDependencies(task.id));
-  }
-
-  const blockedByIds = new Set(deps.blockedBy.map((t) => t.id));
-  // 排除自己 + 已選的；已完成的依賴沒意義，預設藏（showDone 可切回）
-  const selectable = allTasks.filter(
-    (t) => t.id !== task.id && !blockedByIds.has(t.id)
-  );
-  const hiddenDoneCount = selectable.filter((t) => t.status === "DONE").length;
-  const q = query.trim().toLowerCase();
-  const candidates = selectable.filter((t) => {
-    if (!showDone && t.status === "DONE") return false;
-    if (q && !t.title.toLowerCase().includes(q)) return false;
-    return true;
-  });
-
-  function handlePick(blockerId: string) {
-    setError(null);
-    startTransition(async () => {
-      const res = await addDependency({ blockedId: task.id, blockerId });
-      if (res.ok) {
-        setQuery("");
-        await refetch();
-        router.refresh();
-      } else {
-        setError(res.error);
-      }
-    });
-  }
-
-  function handleRemove(blockerId: string) {
-    startTransition(async () => {
-      await removeDependency({ blockedId: task.id, blockerId });
-      await refetch();
-      router.refresh();
-    });
-  }
-
-  return (
-    <div className="pt-4 border-t border-rule">
-      <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-3">
-        依賴關係
-      </div>
-
-      <div className="mb-3">
-        <div className="text-xs text-text-dim mb-1.5">需先完成（阻擋此任務）</div>
-        {loading ? (
-          <div className="text-sm text-text-faint">載入中…</div>
-        ) : deps.blockedBy.length === 0 ? (
-          <div className="text-sm text-text-faint">無</div>
-        ) : (
-          <ul className="space-y-1">
-            {deps.blockedBy.map((t) => (
-              <li
-                key={t.id}
-                className="group flex items-center gap-2 bg-surface-2 rounded-lg px-2.5 py-1.5"
-              >
-                <span className="text-orange text-xs">⛓</span>
-                <span className="flex-1 text-sm truncate">{t.title}</span>
-                <span className="text-[11px] text-text-faint shrink-0">
-                  {statusLabel(t.status)}
-                </span>
-                <button
-                  onClick={() => handleRemove(t.id)}
-                  className="text-text-faint hover:text-red text-xs opacity-0 group-hover:opacity-100 cursor-pointer"
-                  title="移除依賴"
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setError(null);
-          }}
-          placeholder="搜尋任務加入「需先完成」…"
-          className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-        />
-        <div className="mt-1.5 max-h-56 overflow-y-auto rounded-lg border border-rule divide-y divide-rule">
-          {candidates.length === 0 ? (
-            <div className="px-3 py-3 text-sm text-text-faint text-center">
-              {q ? "找不到符合的任務" : "沒有可加入的任務"}
-            </div>
-          ) : (
-            candidates.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => handlePick(t.id)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 cursor-pointer"
-              >
-                <span className="flex-1 text-sm truncate">{t.title}</span>
-                <span className="text-[11px] text-text-faint shrink-0">
-                  {statusLabel(t.status)}
-                </span>
-                {t.assignee && (
-                  <span className="text-[11px] text-text-dim shrink-0 max-w-[6rem] truncate">
-                    {t.assignee.name}
-                  </span>
-                )}
-              </button>
-            ))
-          )}
-        </div>
-        {hiddenDoneCount > 0 && (
-          <button
-            onClick={() => setShowDone((v) => !v)}
-            className="mt-1.5 text-[11px] text-text-faint hover:text-text-dim cursor-pointer"
-          >
-            {showDone ? "隱藏已完成任務" : `顯示已完成任務（${hiddenDoneCount}）`}
-          </button>
-        )}
-      </div>
-      {error && <div className="mt-1.5 text-xs text-red">{error}</div>}
-
-      {deps.blocking.length > 0 && (
-        <div className="mt-3">
-          <div className="text-xs text-text-dim mb-1.5">此任務阻擋了</div>
-          <ul className="space-y-1">
-            {deps.blocking.map((t) => (
-              <li
-                key={t.id}
-                className="flex items-center gap-2 px-2.5 py-1 text-sm text-text-dim"
-              >
-                <span className="text-text-faint text-xs">→</span>
-                <span className="flex-1 truncate">{t.title}</span>
-                <span className="text-[11px] text-text-faint shrink-0">
-                  {statusLabel(t.status)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ==== 工作清單（drawer 內，含拖排）====
 
@@ -1421,7 +1247,7 @@ function ChecklistRow({
           >
             {item.content}
           </span>
-          <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100">
+          <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <button
               onClick={onStartEdit}
               className="text-[11px] text-text-faint hover:text-blue cursor-pointer"
@@ -1584,5 +1410,268 @@ function DuePill({
     >
       {children}
     </span>
+  );
+}
+
+// ==== 卡片聯繫（drawer 內）— 跨團隊交流，點聯繫卡片 peek 預覽 ====
+function LinkSection({ taskId }: { taskId: string }) {
+  const router = useRouter();
+  const [links, setLinks] = useState<ViewTaskLink[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [candidates, setCandidates] = useState<ViewTaskLink[]>([]);
+  const [picking, setPicking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [peekId, setPeekId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setQuery("");
+    setPicking(false);
+    getTaskLinks(taskId).then((d) => {
+      if (!cancelled) {
+        setLinks(d);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
+
+  async function refetch() {
+    setLinks(await getTaskLinks(taskId));
+  }
+
+  async function openPicker() {
+    setPicking(true);
+    setError(null);
+    setCandidates(await getLinkableTasks(taskId));
+  }
+
+  const linkedIds = new Set(links.map((l) => l.id));
+  const q = query.trim().toLowerCase();
+  const filtered = candidates.filter(
+    (c) => !linkedIds.has(c.id) && (!q || c.title.toLowerCase().includes(q))
+  );
+
+  function handleAdd(linkedId: string) {
+    setError(null);
+    startTransition(async () => {
+      const res = await addTaskLink({ taskId, linkedId });
+      if (res.ok) {
+        setQuery("");
+        await refetch();
+        router.refresh();
+      } else {
+        setError(res.error);
+      }
+    });
+  }
+
+  function handleRemove(linkedId: string) {
+    startTransition(async () => {
+      await removeTaskLink({ taskId, linkedId });
+      await refetch();
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="pt-4 border-t border-rule">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+          聯繫卡片
+        </div>
+        <button
+          type="button"
+          onClick={() => (picking ? setPicking(false) : openPicker())}
+          className="text-[11px] text-blue hover:underline cursor-pointer"
+        >
+          {picking ? "收起" : "＋ 聯繫卡片"}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-sm text-text-faint">載入中…</div>
+      ) : links.length === 0 && !picking ? (
+        <div className="text-sm text-text-faint">尚未聯繫任何卡片</div>
+      ) : (
+        <ul className="space-y-1">
+          {links.map((l) => (
+            <li
+              key={l.id}
+              className="group flex items-center gap-2 bg-surface-2 rounded-lg px-2.5 py-1.5"
+            >
+              <button
+                type="button"
+                onClick={() => setPeekId(l.id)}
+                className="flex-1 flex items-center gap-2 min-w-0 text-left cursor-pointer"
+                title="點擊預覽這張卡片"
+              >
+                <span className="text-blue text-xs">🔗</span>
+                <span className="flex-1 text-sm truncate group-hover:text-blue">
+                  {l.title}
+                </span>
+                {l.teamName && (
+                  <span className="text-[10px] text-text-faint shrink-0">
+                    {l.teamName}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemove(l.id)}
+                title="移除聯繫"
+                className="text-text-faint hover:text-red text-xs opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 cursor-pointer"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {picking && (
+        <div className="mt-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setError(null);
+            }}
+            placeholder="搜尋要聯繫的卡片…"
+            className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+          />
+          <div className="mt-1.5 max-h-56 overflow-y-auto rounded-lg border border-rule divide-y divide-rule">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-3 text-sm text-text-faint text-center">
+                {q ? "找不到符合的卡片" : "沒有可聯繫的卡片"}
+              </div>
+            ) : (
+              filtered.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => handleAdd(c.id)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 cursor-pointer"
+                >
+                  <span className="flex-1 text-sm truncate">{c.title}</span>
+                  {c.teamName && (
+                    <span className="text-[10px] text-text-faint shrink-0">
+                      {c.teamName}
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+      {error && <div className="mt-1.5 text-xs text-red">{error}</div>}
+
+      {peekId && <TaskPeek id={peekId} onClose={() => setPeekId(null)} />}
+    </div>
+  );
+}
+
+// ==== 聯繫卡片 peek 預覽（唯讀）====
+function TaskPeek({ id, onClose }: { id: string; onClose: () => void }) {
+  const [peek, setPeek] = useState<ViewTaskPeek | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getTaskPeek(id).then((d) => {
+      if (!cancelled) {
+        setPeek(d);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-surface rounded-2xl shadow-2xl w-[420px] max-w-[92vw] max-h-[80dvh] overflow-auto"
+      >
+        <div className="px-5 py-3 border-b border-rule flex items-center gap-2">
+          <span className="text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+            卡片預覽
+          </span>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-7 h-7 rounded-md bg-rule-soft hover:bg-rule text-text-dim flex items-center justify-center cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+        {loading ? (
+          <div className="px-5 py-8 text-sm text-text-faint text-center">
+            載入中…
+          </div>
+        ) : !peek ? (
+          <div className="px-5 py-8 text-sm text-text-faint text-center">
+            找不到這張卡片
+          </div>
+        ) : (
+          <div className="px-5 py-4 space-y-3">
+            <div className="text-lg font-bold tracking-tight">{peek.title}</div>
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="px-2 py-0.5 rounded-md bg-surface-2 font-semibold">
+                {statusOptions.find((s) => s.value === peek.status)?.label ??
+                  peek.status}
+              </span>
+              {peek.teamName && (
+                <span className="px-2 py-0.5 rounded-md bg-rule-soft text-text-dim">
+                  {peek.teamName}
+                </span>
+              )}
+              {peek.projectName && (
+                <span className="px-2 py-0.5 rounded-md bg-rule-soft text-text-dim">
+                  {peek.projectName}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs text-text-dim">
+              <div>
+                <span className="text-text-faint">負責人：</span>
+                {peek.assigneeName ?? "未指派"}
+              </div>
+              <div>
+                <span className="text-text-faint">截止：</span>
+                {peek.dueIso ? peek.dueIso.slice(0, 10) : "—"}
+              </div>
+            </div>
+            {peek.description && (
+              <RichTextView
+                html={peek.description}
+                className="text-sm text-text-dim break-words pt-2 border-t border-rule"
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

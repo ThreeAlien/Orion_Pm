@@ -1,6 +1,7 @@
 // 團隊成員頁 — 列出所有 User（Google 登入後自動 upsert 進來）
 import type { ViewMember } from "@/server/queries";
 import { RemoveMemberButton } from "./remove-member-button";
+import { EditProfileButton } from "./edit-profile-button";
 
 const GRADIENT_MAP: Record<"w" | "l" | "s" | "y", string> = {
   w: "from-blue to-purple",
@@ -63,11 +64,9 @@ function MemberCard({
 }) {
   const isGoogleAccount = !member.email.endsWith("@orion.local");
   const isSelf = member.id === currentUserId;
-  return (
-    <div
-      className="bg-surface-2 rounded-xl p-4"
-      style={{ boxShadow: "var(--shadow-card)" }}
-    >
+
+  const inner = (
+    <>
       <div className="flex items-start gap-3 mb-3">
         {member.image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -130,6 +129,24 @@ function MemberCard({
           ownedProjects={member.ownedProjects}
         />
       </div>
+    </>
+  );
+
+  // 自己的卡片：整張可點開編輯（EditProfileButton 提供卡片外框 + hover 提示）
+  if (isSelf) {
+    return (
+      <EditProfileButton name={member.name} image={member.image}>
+        {inner}
+      </EditProfileButton>
+    );
+  }
+
+  return (
+    <div
+      className="bg-surface-2 rounded-xl p-4"
+      style={{ boxShadow: "var(--shadow-card)" }}
+    >
+      {inner}
     </div>
   );
 }

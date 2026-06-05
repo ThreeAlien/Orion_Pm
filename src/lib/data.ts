@@ -49,6 +49,17 @@ export interface ViewProject {
   name: string;
   color: ProjectColor;
   taskCount: number;
+  teamId?: string | null;
+  teamSlug?: string | null;
+  teamName?: string | null;
+}
+
+export interface ViewTeam {
+  id: string;
+  name: string;
+  slug: string;
+  color: ProjectColor;
+  sort: number;
 }
 
 export interface ViewTask {
@@ -66,8 +77,9 @@ export interface ViewTask {
   dueDateIso?: string | null;
   subtasks?: { done: number; total: number };
   checklist?: { done: number; total: number };
-  hasDependency?: boolean;
   commentCount?: number;
+  /// 任務所屬專案的團隊 slug（給全域團隊 filter 用）；無專案 / 專案未分隊 = null
+  teamSlug?: string | null;
 }
 
 export interface ViewChecklistItem {

@@ -101,6 +101,20 @@ async function main() {
   }
   const weiderId = userIdMap.get("weider")!;
 
+  // ==== Teams（工程 / 行銷）====
+  const teamFixtures = [
+    { id: "team-engineering", name: "工程團隊", slug: "engineering", color: "blue", sort: 1 },
+    { id: "team-marketing", name: "行銷團隊", slug: "marketing", color: "pink", sort: 2 },
+  ];
+  for (const t of teamFixtures) {
+    await prisma.team.upsert({
+      where: { slug: t.slug },
+      update: { name: t.name, color: t.color, sort: t.sort },
+      create: t,
+    });
+    console.log(`  team: ${t.name}`);
+  }
+
   // ==== Projects ====
   for (const p of projectFixtures) {
     await prisma.project.upsert({
@@ -149,29 +163,6 @@ async function main() {
     });
   }
   console.log(`  tasks: seeded ${taskFixtures.length} rows`);
-
-  // ==== Task Dependencies (demo)====
-  const dependencies: Array<{ blocker: string; blocked: string }> = [
-    { blocker: "t-101", blocked: "t-105" }, // i18n config → product list filter UI（威瓦第）
-    { blocker: "t-301", blocked: "t-203" }, // Cmd 多選 → popover 取代 mat-menu（CMS）
-    { blocker: "t-001", blocked: "t-005" }, // forgot password → deploy script（個人）
-  ];
-  for (const dep of dependencies) {
-    await prisma.taskDependency.upsert({
-      where: {
-        blockerId_blockedId: {
-          blockerId: `seed-${dep.blocker}`,
-          blockedId: `seed-${dep.blocked}`,
-        },
-      },
-      update: {},
-      create: {
-        blockerId: `seed-${dep.blocker}`,
-        blockedId: `seed-${dep.blocked}`,
-      },
-    });
-  }
-  console.log(`  dependencies: ${dependencies.length} rows`);
 
   // ==== Documents ====
   await prisma.document.upsert({

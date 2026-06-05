@@ -73,3 +73,50 @@ body {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* ===== 富文本編輯器（react-quill-new snow）+ 顯示 ===== */
+.orion-quill .ql-toolbar {
+  border-color: var(--rule, #e5e5ea);
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  background: var(--surface-2, #f7f7fa);
+}
+.orion-quill .ql-container {
+  border-color: var(--rule, #e5e5ea);
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  font-size: 0.875rem;
+  min-height: 90px;
+}
+.orion-quill .ql-editor {
+  min-height: 90px;
+}
+.orion-quill .ql-editor.ql-blank::before {
+  font-style: normal;
+  color: var(--text-faint, #9a9aa2);
+}
+
+/* 顯示富文本（描述 / 留言）— 基本排版 */
+.orion-richtext { line-height: 1.6; }
+.orion-richtext p { margin: 0 0 0.35em; }
+.orion-richtext p:last-child { margin-bottom: 0; }
+.orion-richtext h1 { font-size: 1.25rem; font-weight: 700; margin: 0.4em 0 0.25em; }
+.orion-richtext h2 { font-size: 1.1rem; font-weight: 700; margin: 0.4em 0 0.25em; }
+.orion-richtext ul,
+.orion-richtext ol { padding-left: 1.4em; margin: 0.25em 0; }
+.orion-richtext ul { list-style: disc; }
+.orion-richtext ol { list-style: decimal; }
+.orion-richtext a { color: var(--blue, #2f6bff); text-decoration: underline; }
+.orion-richtext blockquote {
+  border-left: 3px solid var(--rule, #e5e5ea);
+  padding-left: 0.75em;
+  margin: 0.35em 0;
+  color: var(--text-dim, #6b6b73);
+}
+.orion-richtext pre {
+  background: var(--surface-2, #f2f2f5);
+  border-radius: 0.4rem;
+  padding: 0.5em 0.7em;
+  font-size: 0.85em;
+  overflow-x: auto;
+}

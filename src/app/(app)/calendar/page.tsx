@@ -1,5 +1,6 @@
 import { CalendarView } from "@/components/calendar-view";
 import { fetchCalendarTasks, fetchCalendarRangeTasks } from "@/server/queries";
+import { getTeamScope, inTeamScope } from "@/lib/team-scope";
 
 export default async function CalendarPage({
   searchParams,
@@ -8,6 +9,7 @@ export default async function CalendarPage({
 }) {
   const params = await searchParams;
   const view = params.view === "week" ? "week" : "month";
+  const scope = await getTeamScope();
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
@@ -24,7 +26,9 @@ export default async function CalendarPage({
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
     const weekEnd = new Date(weekStart.getTime() + 7 * 86400000);
-    const tasks = await fetchCalendarRangeTasks(weekStart, weekEnd);
+    const tasks = (await fetchCalendarRangeTasks(weekStart, weekEnd)).filter(
+      (t) => inTeamScope(t.teamSlug, scope)
+    );
     return (
       <CalendarView
         mode="week"
@@ -51,7 +55,9 @@ export default async function CalendarPage({
     }
   }
 
-  const tasks = await fetchCalendarTasks(year, month);
+  const tasks = (await fetchCalendarTasks(year, month)).filter((t) =>
+    inTeamScope(t.teamSlug, scope)
+  );
   return (
     <CalendarView mode="month" year={year} month={month} tasks={tasks} />
   );

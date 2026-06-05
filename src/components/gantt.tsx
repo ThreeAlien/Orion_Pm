@@ -332,8 +332,6 @@ export function GanttView({
                     onClickBar={() => setSelectedTaskId(t.id)}
                   />
                 ))}
-                {/* Dependency lines overlay */}
-                <DependencyLines tasks={tasks} pct={pct} start={start} end={end} />
               </>
             )}
           </div>
@@ -346,7 +344,6 @@ export function GanttView({
         task={selectedTask}
         projects={projectsForDrawer}
         users={users}
-        allTasks={viewTasks}
         currentUserId={currentUserId}
         onClose={() => setSelectedTaskId(null)}
       />
@@ -757,9 +754,6 @@ function TaskRow({
         <div className="flex gap-2 text-[11px] text-text-dim mt-1 pl-5 tabular">
           {task.assigneeName && <span>{task.assigneeName}</span>}
           <span>· {fmt(task.dueDate)} 截止</span>
-          {task.blockedByIds.length > 0 && (
-            <span className="text-orange font-semibold">⛓ {task.blockedByIds.length}</span>
-          )}
         </div>
       </div>
 
@@ -901,100 +895,6 @@ function StaticBar({
         {label}
       </div>
     </div>
-  );
-}
-
-// ==== Dependency Lines (SVG absolute overlay)====
-// 放在 grid container 內（grid 已加 relative），用 absolute position 對齊 timeline area
-// timeline area = grid col 2，從 sidebar 240px 起，header 約 44px 高，下方接 task rows 各 52px
-
-const HEADER_HEIGHT = 44;
-const SIDEBAR_WIDTH = 240;
-
-function DependencyLines({
-  tasks,
-  pct,
-}: {
-  tasks: GanttTask[];
-  pct: (d: Date) => number;
-  start: Date;
-  end: Date;
-}) {
-  const idxMap = new Map(tasks.map((t, i) => [t.id, i]));
-
-  type Line = {
-    blockerIdx: number;
-    blockedIdx: number;
-    x1: number; // 0~100
-    x2: number; // 0~100
-  };
-  const lines: Line[] = [];
-  for (const blocked of tasks) {
-    const blockedIdx = idxMap.get(blocked.id)!;
-    for (const blockerId of blocked.blockedByIds) {
-      const blockerIdx = idxMap.get(blockerId);
-      if (blockerIdx === undefined) continue;
-      const blocker = tasks[blockerIdx];
-      lines.push({
-        blockerIdx,
-        blockedIdx,
-        x1: pct(blocker.dueDate),
-        x2: pct(blocked.startDate),
-      });
-    }
-  }
-
-  if (lines.length === 0) return null;
-
-  const totalHeight = tasks.length * TASK_ROW_H;
-
-  return (
-    <svg
-      className="absolute pointer-events-none"
-      style={{
-        left: SIDEBAR_WIDTH,
-        top: HEADER_HEIGHT,
-        right: 0,
-        height: totalHeight,
-        zIndex: 5,
-      }}
-      viewBox={`0 0 1000 ${totalHeight}`}
-      preserveAspectRatio="none"
-    >
-      <defs>
-        <marker
-          id="orion-gantt-arrow"
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="6"
-          markerHeight="6"
-          orient="auto"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--orange)" />
-        </marker>
-      </defs>
-      {lines.map((l, i) => {
-        const y1 = l.blockerIdx * TASK_ROW_H + TASK_ROW_H / 2;
-        const y2 = l.blockedIdx * TASK_ROW_H + TASK_ROW_H / 2;
-        const startX = l.x1 * 10; // pct → 0~1000
-        const endX = l.x2 * 10;
-        const midX = Math.max(startX + 8, endX - 12);
-        const path = `M ${startX} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${endX - 1} ${y2}`;
-        return (
-          <path
-            key={i}
-            d={path}
-            fill="none"
-            stroke="var(--orange)"
-            strokeWidth="1.6"
-            strokeDasharray="4 3"
-            markerEnd="url(#orion-gantt-arrow)"
-            vectorEffect="non-scaling-stroke"
-          />
-        );
-      })}
-    </svg>
   );
 }
 

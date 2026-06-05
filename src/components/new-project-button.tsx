@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/server/actions";
-import type { ViewUser } from "@/lib/data";
+import type { ViewUser, ViewTeam } from "@/lib/data";
 import { NAMED_PROJECT_COLORS } from "@/lib/data";
 
 const PRESET_COLORS = [
@@ -19,9 +19,11 @@ const PRESET_COLORS = [
 
 export function NewProjectButton({
   users,
+  teams,
   currentUserId,
 }: {
   users: ViewUser[];
+  teams: ViewTeam[];
   currentUserId?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -37,6 +39,7 @@ export function NewProjectButton({
         open={open}
         onClose={() => setOpen(false)}
         users={users}
+        teams={teams}
         currentUserId={currentUserId}
       />
     </>
@@ -47,11 +50,13 @@ function NewProjectDialog({
   open,
   onClose,
   users,
+  teams,
   currentUserId,
 }: {
   open: boolean;
   onClose: () => void;
   users: ViewUser[];
+  teams: ViewTeam[];
   currentUserId?: string;
 }) {
   const router = useRouter();
@@ -61,6 +66,7 @@ function NewProjectDialog({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [ownerId, setOwnerId] = useState("");
+  const [teamId, setTeamId] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -70,6 +76,7 @@ function NewProjectDialog({
       setStartDate("");
       setEndDate("");
       setOwnerId(currentUserId ?? users[0]?.id ?? "");
+      setTeamId("");
       setSaving(false);
     }
   }, [open, users, currentUserId]);
@@ -94,6 +101,7 @@ function NewProjectDialog({
         startDate: startDate || null,
         endDate: endDate || null,
         ownerId,
+        teamId: teamId || null,
       });
       setSaving(false);
       router.refresh();
@@ -198,6 +206,20 @@ function NewProjectDialog({
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="團隊">
+                <select
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                >
+                  <option value="">未分類</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
                     </option>
                   ))}
                 </select>

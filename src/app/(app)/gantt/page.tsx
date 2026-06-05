@@ -6,6 +6,7 @@ import {
   fetchTasks,
   fetchUsers,
 } from "@/server/queries";
+import { getTeamScope, inTeamScope } from "@/lib/team-scope";
 
 const VALID_ZOOMS: Zoom[] = ["day", "week", "month", "quarter"];
 
@@ -20,13 +21,16 @@ export default async function GanttPage({
     ? (params.zoom as Zoom)
     : "week";
 
-  const [projects, allTasks, users, session] = await Promise.all([
+  const [allProjects, allTasksRaw, users, scope, session] = await Promise.all([
     fetchGanttProjects(),
     fetchTasks(),
     fetchUsers(),
+    getTeamScope(),
     auth(),
   ]);
   const currentUserId = session?.user?.id;
+  const projects = allProjects.filter((p) => inTeamScope(p.teamSlug, scope));
+  const allTasks = allTasksRaw.filter((t) => inTeamScope(t.teamSlug, scope));
 
   if (isTaskLevel) {
     const projectId =

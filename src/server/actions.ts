@@ -2,13 +2,17 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { TEAM_COOKIE } from "@/lib/team-scope";
 import { STATUS_LABELS, PRIORITY_LABELS } from "@/lib/labels";
 import {
   fetchTaskTimeline,
   fetchTaskChecklist,
-  fetchTaskDependencies,
+  fetchTaskLinks,
+  fetchLinkableTasks,
+  fetchTaskPeek,
 } from "@/server/queries";
 import {
   TaskStatus,
@@ -19,6 +23,62 @@ import {
 async function currentUserId(): Promise<string | null> {
   const session = await auth();
   return session?.user?.id ?? null;
+}
+
+// 全域團隊範圍：寫進 cookie，給所有 view server-side 過濾。"all" 或 team slug。
+export async function setTeamScope(slug: string) {
+  const c = await cookies();
+  c.set(TEAM_COOKIE, slug, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+  revalidatePath("/", "layout");
+}
+
+// 團隊改名 / 換色
+const UpdateTeamSchema = z.object({
+  id: z.string(),
+  name: z.string().trim().min(1).max(40),
+  color: z.string().min(1).max(40),
+});
+
+export async function updateTeam(raw: unknown) {
+  const data = UpdateTeamSchema.parse(raw);
+  await db.team.update({
+    where: { id: data.id },
+    data: { name: data.name, color: data.color },
+  });
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
+// 個人資料自助編輯：使用者改自己的姓名 / 頭貼。
+// avatarUrl 存壓縮後的 webp data URL（無物件儲存，直接進 DB）；null = 清掉自訂、回退 Google 頭像。
+const UpdateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  avatarUrl: z.string().nullable().optional(),
+});
+
+export async function updateMyProfile(raw: unknown) {
+  const uid = await currentUserId();
+  if (!uid) return { ok: false as const, error: "未登入" };
+  const data = UpdateProfileSchema.parse(raw);
+  // 防呆：base64 webp 頭貼應該很小（128px ~ 數 KB），超過 200KB 視為異常擋掉
+  if (data.avatarUrl && data.avatarUrl.length > 200_000) {
+    return { ok: false as const, error: "頭貼檔案太大，請換小一點的圖" };
+  }
+  // 只允許 data:image webp/png/jpeg，擋掉外部 URL 注入夾帶
+  if (data.avatarUrl && !/^data:image\/(webp|png|jpeg);base64,/.test(data.avatarUrl)) {
+    return { ok: false as const, error: "頭貼格式不支援" };
+  }
+  await db.user.update({
+    where: { id: uid },
+    data: { name: data.name, avatarUrl: data.avatarUrl ?? null },
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/members");
+  return { ok: true as const };
 }
 
 // 活動軌跡：fromValue / toValue 一律寫入當下的人類可讀字串（label / 名字 / 日期）
@@ -270,6 +330,7 @@ const CreateProjectSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   ownerId: z.string(),
+  teamId: z.string().nullable().optional(),
 });
 
 const PROJECT_STATUSES = ["PLANNING", "PAUSED", "IN_PROGRESS", "DONE"] as const;
@@ -282,6 +343,7 @@ const UpdateProjectSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   ownerId: z.string(),
+  teamId: z.string().nullable().optional(),
 });
 
 export async function updateProject(raw: unknown) {
@@ -295,6 +357,7 @@ export async function updateProject(raw: unknown) {
       startDate: data.startDate ? new Date(data.startDate) : null,
       endDate: data.endDate ? new Date(data.endDate) : null,
       ownerId: data.ownerId,
+      teamId: data.teamId || null,
     },
   });
   revalidatePath("/");
@@ -368,6 +431,7 @@ export async function createProject(raw: unknown) {
       startDate: data.startDate ? new Date(data.startDate) : null,
       endDate: data.endDate ? new Date(data.endDate) : null,
       ownerId: data.ownerId,
+      teamId: data.teamId || null,
       status: "PLANNING",
     },
   });
@@ -606,72 +670,56 @@ export async function getTaskChecklist(taskId: string) {
   return fetchTaskChecklist(taskId);
 }
 
-// ==================== 任務依賴（TaskDependency）====================
-// 邊方向：blocker → blocked（blocker 要先完成，blocked 才能進行）
+// ==================== 卡片聯繫（TaskLink）====================
+// 跨團隊交流：兩張卡互相參考 + peek 預覽，無 blocking / 排序語意。雙向去重。
 
-const DependencySchema = z.object({
-  blockedId: z.string(),
-  blockerId: z.string(),
+const TaskLinkSchema = z.object({
+  taskId: z.string(),
+  linkedId: z.string(),
 });
 
-// 加入邊 blockerId → blockedId 是否會成環：
-// 若 blockedId 順著 blocker→blocked 已能走到 blockerId，加了就形成循環
-async function wouldCreateCycle(
-  blockerId: string,
-  blockedId: string
-): Promise<boolean> {
-  const deps = await db.taskDependency.findMany({
-    select: { blockerId: true, blockedId: true },
-  });
-  const adj = new Map<string, string[]>();
-  for (const d of deps) {
-    const arr = adj.get(d.blockerId);
-    if (arr) arr.push(d.blockedId);
-    else adj.set(d.blockerId, [d.blockedId]);
-  }
-  const stack = [blockedId];
-  const seen = new Set<string>();
-  while (stack.length) {
-    const cur = stack.pop()!;
-    if (cur === blockerId) return true;
-    if (seen.has(cur)) continue;
-    seen.add(cur);
-    for (const next of adj.get(cur) ?? []) stack.push(next);
-  }
-  return false;
-}
-
-export async function addDependency(
+export async function addTaskLink(
   raw: unknown
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { blockedId, blockerId } = DependencySchema.parse(raw);
-  if (blockedId === blockerId) {
-    return { ok: false, error: "任務不能依賴自己" };
-  }
-  const exists = await db.taskDependency.findUnique({
-    where: { blockerId_blockedId: { blockerId, blockedId } },
+  const { taskId, linkedId } = TaskLinkSchema.parse(raw);
+  if (taskId === linkedId) return { ok: false, error: "不能聯繫自己" };
+  const exists = await db.taskLink.findFirst({
+    where: {
+      OR: [
+        { taskId, linkedId },
+        { taskId: linkedId, linkedId: taskId },
+      ],
+    },
   });
-  if (exists) return { ok: false, error: "已經有這個依賴了" };
-  if (await wouldCreateCycle(blockerId, blockedId)) {
-    return { ok: false, error: "會造成循環依賴，無法加入" };
-  }
-  await db.taskDependency.create({ data: { blockerId, blockedId } });
+  if (exists) return { ok: false, error: "已經聯繫過這張卡了" };
+  await db.taskLink.create({ data: { taskId, linkedId } });
   revalidatePath("/");
   revalidatePath("/tasks");
-  revalidatePath("/gantt");
   return { ok: true };
 }
 
-export async function removeDependency(raw: unknown) {
-  const { blockedId, blockerId } = DependencySchema.parse(raw);
-  await db.taskDependency.delete({
-    where: { blockerId_blockedId: { blockerId, blockedId } },
+export async function removeTaskLink(raw: unknown) {
+  const { taskId, linkedId } = TaskLinkSchema.parse(raw);
+  await db.taskLink.deleteMany({
+    where: {
+      OR: [
+        { taskId, linkedId },
+        { taskId: linkedId, linkedId: taskId },
+      ],
+    },
   });
   revalidatePath("/");
   revalidatePath("/tasks");
-  revalidatePath("/gantt");
 }
 
-export async function getTaskDependencies(taskId: string) {
-  return fetchTaskDependencies(taskId);
+export async function getTaskLinks(taskId: string) {
+  return fetchTaskLinks(taskId);
+}
+
+export async function getLinkableTasks(taskId: string) {
+  return fetchLinkableTasks(taskId);
+}
+
+export async function getTaskPeek(id: string) {
+  return fetchTaskPeek(id);
 }
