@@ -137,6 +137,9 @@ model Project {
   taxId        String?
   brandName    String?
 
+  // 檔案統籌表：[{ label, url }] 連結清單，業主自填、快速點開檔案位置
+  fileLinks    Json   @default("[]")
+
   ownerId     String
   owner       User              @relation("ProjectOwner", fields: [ownerId], references: [id])
 

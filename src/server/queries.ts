@@ -182,6 +182,7 @@ export interface ViewProjectDetail {
   customerName: string | null;
   taxId: string | null;
   brandName: string | null;
+  fileLinks: { label: string; url: string }[];
   totalTasks: number;
   completedTasks: number;
   completionRate: number;
@@ -215,6 +216,9 @@ export async function fetchProjectDetail(
     customerName: p.customerName ?? null,
     taxId: p.taxId ?? null,
     brandName: p.brandName ?? null,
+    fileLinks: Array.isArray(p.fileLinks)
+      ? (p.fileLinks as { label: string; url: string }[])
+      : [],
     totalTasks: total,
     completedTasks: done,
     completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
@@ -248,6 +252,9 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
       customerName: p.customerName ?? null,
       taxId: p.taxId ?? null,
       brandName: p.brandName ?? null,
+      fileLinks: Array.isArray(p.fileLinks)
+        ? (p.fileLinks as { label: string; url: string }[])
+        : [],
       totalTasks: total,
       completedTasks: done,
       completionRate: total === 0 ? 0 : Math.round((done / total) * 100),

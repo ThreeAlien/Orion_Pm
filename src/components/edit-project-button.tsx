@@ -94,6 +94,10 @@ function EditProjectDialog({
   const [customerName, setCustomerName] = useState(project.customerName ?? "");
   const [taxId, setTaxId] = useState(project.taxId ?? "");
   const [brandName, setBrandName] = useState(project.brandName ?? "");
+  const [fileLinks, setFileLinks] = useState<{ label: string; url: string }[]>(
+    project.fileLinks ?? []
+  );
+  const [linksOpen, setLinksOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // sync from project
@@ -113,6 +117,8 @@ function EditProjectDialog({
       setCustomerName(project.customerName ?? "");
       setTaxId(project.taxId ?? "");
       setBrandName(project.brandName ?? "");
+      setFileLinks(project.fileLinks ?? []);
+      setLinksOpen((project.fileLinks?.length ?? 0) > 0);
       setSaving(false);
     }
   }, [open, project]);
@@ -144,6 +150,7 @@ function EditProjectDialog({
         customerName: customerName || null,
         taxId: taxId || null,
         brandName: brandName || null,
+        fileLinks,
       });
       setSaving(false);
       router.refresh();
@@ -333,6 +340,94 @@ function EditProjectDialog({
                   maxLength={120}
                 />
               </Field>
+            </div>
+
+            {/* 檔案統籌表：可收合的連結清單 */}
+            <div className="border border-rule rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setLinksOpen((o) => !o)}
+                className="w-full flex items-center gap-2 px-3 py-2.5 bg-surface-2 hover:bg-rule-soft cursor-pointer text-sm font-semibold"
+              >
+                <span className="text-text-faint text-xs">
+                  {linksOpen ? "▼" : "▶"}
+                </span>
+                📎 檔案統籌表
+                {fileLinks.length > 0 && (
+                  <span className="text-text-faint font-normal text-xs tabular">
+                    （{fileLinks.length}）
+                  </span>
+                )}
+              </button>
+              {linksOpen && (
+                <div className="p-3 space-y-2 border-t border-rule">
+                  {fileLinks.length === 0 && (
+                    <div className="text-xs text-text-faint py-1">
+                      還沒有連結，點下方新增。填名稱 + 網址，存檔後就能快速點開。
+                    </div>
+                  )}
+                  {fileLinks.map((link, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <input
+                        value={link.label}
+                        onChange={(e) =>
+                          setFileLinks((prev) =>
+                            prev.map((l, j) =>
+                              j === i ? { ...l, label: e.target.value } : l
+                            )
+                          )
+                        }
+                        placeholder="名稱（如：報價單）"
+                        maxLength={200}
+                        className="w-2/5 bg-surface-2 border border-rule rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                      />
+                      <input
+                        value={link.url}
+                        onChange={(e) =>
+                          setFileLinks((prev) =>
+                            prev.map((l, j) =>
+                              j === i ? { ...l, url: e.target.value } : l
+                            )
+                          )
+                        }
+                        placeholder="貼上連結網址 https://…"
+                        maxLength={2000}
+                        className="flex-1 min-w-0 bg-surface-2 border border-rule rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                      />
+                      {link.url && (
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-7 h-7 flex items-center justify-center rounded-md bg-rule-soft hover:bg-rule text-text-dim flex-shrink-0"
+                          title="開啟連結"
+                        >
+                          ↗
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFileLinks((prev) => prev.filter((_, j) => j !== i))
+                        }
+                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-red/[.12] text-text-faint hover:text-red flex-shrink-0"
+                        title="刪除這列"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFileLinks((prev) => [...prev, { label: "", url: "" }])
+                    }
+                    className="text-xs text-blue hover:underline cursor-pointer mt-1"
+                  >
+                    ＋ 新增一列
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

@@ -438,6 +438,15 @@ const UpdateProjectSchema = z.object({
   customerName: z.string().trim().max(120).nullable().optional(),
   taxId: z.string().trim().max(20).nullable().optional(),
   brandName: z.string().trim().max(120).nullable().optional(),
+  // 檔案統籌表：標籤 + 超連結清單
+  fileLinks: z
+    .array(
+      z.object({
+        label: z.string().trim().max(200),
+        url: z.string().trim().max(2000),
+      })
+    )
+    .optional(),
 });
 
 export async function updateProject(raw: unknown) {
@@ -455,6 +464,14 @@ export async function updateProject(raw: unknown) {
       customerName: data.customerName?.trim() || null,
       taxId: data.taxId?.trim() || null,
       brandName: data.brandName?.trim() || null,
+      // 只留有填東西的列（label 或 url 任一非空）
+      ...(data.fileLinks
+        ? {
+            fileLinks: data.fileLinks.filter(
+              (l) => l.label.trim() || l.url.trim()
+            ),
+          }
+        : {}),
     },
   });
   revalidatePath("/");
