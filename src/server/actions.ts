@@ -582,6 +582,7 @@ const CreateDocumentSchema = z.object({
   date: z.string().nullable().optional(),
   authorId: z.string().nullable().optional(),
   projectId: z.string().nullable().optional(),
+  body: z.string().max(200000).nullable().optional(),
 });
 
 const UpdateDocumentSchema = z.object({
@@ -591,6 +592,7 @@ const UpdateDocumentSchema = z.object({
   date: z.string().nullable().optional(),
   authorId: z.string().nullable().optional(),
   projectId: z.string().nullable().optional(),
+  body: z.string().max(200000).nullable().optional(),
 });
 
 export async function updateDocument(raw: unknown) {
@@ -603,6 +605,8 @@ export async function updateDocument(raw: unknown) {
       docType: data.docType,
       date: data.date ? new Date(data.date) : null,
       authorId: data.authorId || null,
+      // 富文本內文（undefined 不動，傳了就更新；空字串視為清空）
+      ...(data.body !== undefined ? { body: data.body || null } : {}),
     },
   });
   // 同步 ProjectDocument 中介表（先清舊，再加新）
@@ -628,6 +632,7 @@ export async function createDocument(raw: unknown) {
       docType: data.docType,
       date: data.date ? new Date(data.date) : null,
       authorId: data.authorId || null,
+      body: data.body || null,
       projects: data.projectId
         ? { create: { projectId: data.projectId } }
         : undefined,

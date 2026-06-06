@@ -513,6 +513,23 @@ function DraggableCard({
   );
 }
 
+// 起迄日之間的工作日數（含頭尾、扣掉六日；國定連假紅字照算工作日，不扣）
+function countWorkingDays(startIso: string, endIso: string): number {
+  const s = new Date(startIso);
+  s.setHours(0, 0, 0, 0);
+  const e = new Date(endIso);
+  e.setHours(0, 0, 0, 0);
+  if (e < s) return 0;
+  let count = 0;
+  const d = new Date(s);
+  while (d <= e) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
 function TaskCardInner({
   task,
   projects,
@@ -530,6 +547,11 @@ function TaskCardInner({
   const [, startArchive] = useTransition();
   // 被 @ 且未讀：卡片加底色 + 左側色條，一眼看出有人提及你
   const mentioned = useContext(MentionedTasksContext).has(task.id) && !isOverlay;
+  // 有起迄日 → 算工作日總時程（不含六日）顯示在右上角
+  const workDays =
+    task.startDateIso && task.dueDateIso
+      ? countWorkingDays(task.startDateIso, task.dueDateIso)
+      : null;
 
   return (
     <div
@@ -544,48 +566,62 @@ function TaskCardInner({
       }}
     >
       {!isOverlay && (
-        // 卡片右上角封存鈕：hover 才浮現，不必點進卡片。stopPropagation 擋掉
-        // 開卡(onClick)與 dnd-kit 拖拉(pointerdown)；保留確認沿用詳情頁的防誤點。
-        <button
-          type="button"
-          title="封存此任務"
-          aria-label="封存此任務"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (
-              !confirm(
-                `確定要封存「${task.title}」？（不會真的刪除，可以之後復原）`,
+        // 右上角：工作日總時程（常駐）+ 封存鈕（hover 才浮現），排同列不打架。
+        // 封存鈕 stopPropagation 擋掉開卡(onClick)與 dnd-kit 拖拉(pointerdown)。
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
+          <button
+            type="button"
+            title="封存此任務"
+            aria-label="封存此任務"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (
+                !confirm(
+                  `確定要封存「${task.title}」？（不會真的刪除，可以之後復原）`,
+                )
               )
-            )
-              return;
-            startArchive(async () => {
-              await deleteTask(task.id);
-              router.refresh();
-            });
-          }}
-          className="absolute top-1.5 right-1.5 z-10 grid place-items-center w-6 h-6 rounded-md text-text-faint opacity-0 group-hover:opacity-100 hover:text-red hover:bg-red/[.10] transition-all"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+                return;
+              startArchive(async () => {
+                await deleteTask(task.id);
+                router.refresh();
+              });
+            }}
+            className="grid place-items-center w-6 h-6 rounded-md text-text-faint opacity-0 group-hover:opacity-100 hover:text-red hover:bg-red/[.10] transition-all"
           >
-            <path d="M3 6h18" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-          </svg>
-        </button>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </button>
+          {workDays != null && (
+            <span
+              title={`工作日總時程 ${workDays} 天（含起迄、不含六日；國定連假照算）`}
+              className="px-1.5 py-0.5 rounded-md bg-rule-soft text-text-dim text-[11px] font-semibold tabular whitespace-nowrap"
+            >
+              {workDays} 工作日
+            </span>
+          )}
+        </div>
       )}
 
-      <div className="flex gap-1 mb-2 flex-wrap pr-6">
+      <div
+        className={`flex gap-1 mb-2 flex-wrap ${
+          workDays != null ? "pr-[68px]" : "pr-6"
+        }`}
+      >
         {mentioned && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-orange/[.15] text-orange">
             @ 提及你

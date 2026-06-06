@@ -277,6 +277,7 @@ export interface ViewDocument {
   docType: DocType;
   date: Date | null;
   authorName: string | null;
+  body: string | null;
 }
 
 export async function fetchDocuments(): Promise<ViewDocument[]> {
@@ -291,6 +292,7 @@ export async function fetchDocuments(): Promise<ViewDocument[]> {
     docType: d.docType,
     date: d.date,
     authorName: d.author?.name ?? null,
+    body: d.body ?? null,
   }));
 }
 

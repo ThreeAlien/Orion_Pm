@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateDocument, archiveDocument } from "@/server/actions";
+import { RichTextEditor } from "./rich-text-editor";
 import type { ViewUser, ViewProject, DocType } from "@/lib/data";
 import type { ViewDocument } from "@/server/queries";
 
@@ -35,6 +36,7 @@ export function DocumentDetailDialog({
   const [date, setDate] = useState("");
   const [authorId, setAuthorId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
 
   // sync from doc
@@ -47,6 +49,7 @@ export function DocumentDetailDialog({
       const author = users.find((u) => u.name === doc.authorName);
       setAuthorId(author?.id ?? "");
       setProjectId(""); // ViewDocument 沒帶 projectId（schema 是 M:N）
+      setBody(doc.body ?? "");
       setSaving(false);
     }
   }, [doc, users]);
@@ -72,6 +75,7 @@ export function DocumentDetailDialog({
         date: date || null,
         authorId: authorId || null,
         projectId: projectId || null,
+        body,
       });
       setSaving(false);
       router.refresh();
@@ -187,6 +191,14 @@ export function DocumentDetailDialog({
                   </select>
                 </Field>
               </div>
+
+              <Field label="內文">
+                <RichTextEditor
+                  value={body}
+                  onChange={setBody}
+                  placeholder="文件內容…（可貼圖、排版，當團隊知識庫 / 筆記用）"
+                />
+              </Field>
             </div>
 
             <div className="px-6 py-3 border-t border-rule flex items-center gap-2">
