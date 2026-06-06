@@ -254,7 +254,7 @@ function NewProjectDialog({
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-                  placeholder="如：珘寶家企業股份有限公司"
+                  placeholder="公司全名"
                   maxLength={120}
                 />
               </Field>
@@ -272,7 +272,7 @@ function NewProjectDialog({
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
                   className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-                  placeholder="如：微光湖盼"
+                  placeholder="品牌名稱"
                   maxLength={120}
                 />
               </Field>
