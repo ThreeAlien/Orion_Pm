@@ -63,6 +63,9 @@ services:
         condition: service_healthy
     env_file:
       - .env.production
+    # 必須跟 db 同網（threealien_network），否則用容器名 orion-db 解析不到（P1001）
+    networks:
+      - threealien_network
     command: ["npx", "prisma", "migrate", "deploy"]
     restart: "no"
     profiles: ["migrate"]
