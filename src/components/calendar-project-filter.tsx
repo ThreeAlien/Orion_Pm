@@ -49,7 +49,7 @@ export function CalendarProjectFilter({
         <select
           value={activeAssignee ?? ""}
           onChange={(e) => setParam("assignee", e.target.value || null)}
-          className={`px-2.5 py-[5px] rounded-full text-[13px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
+          className={`px-2.5 py-[5px] rounded-full text-[14px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
             activeAssignee
               ? "bg-text text-surface"
               : "bg-rule-soft text-text hover:bg-[#EAEAEF]"

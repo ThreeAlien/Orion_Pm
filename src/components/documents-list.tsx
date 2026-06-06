@@ -55,7 +55,7 @@ export function DocumentsList({
     <div className="bg-surface rounded-2xl p-6 shadow-soft flex-1 flex flex-col min-h-0">
       <div className="flex items-center gap-3.5 mb-5 flex-wrap">
         <h1 className="text-[28px] font-bold tracking-tight">Documents</h1>
-        <span className="text-[13px] text-text-dim tabular">
+        <span className="text-[14px] text-text-dim tabular">
           {documents.length} 份文件
         </span>
         <div className="flex-1" />
@@ -139,7 +139,7 @@ function DocCard({
           <div className="font-semibold text-sm leading-snug tracking-tight">
             {doc.name}
           </div>
-          <div className="text-[11px] text-text-dim mt-1.5 flex items-center gap-1.5 tabular">
+          <div className="text-[12.5px] text-text-dim mt-1.5 flex items-center gap-1.5 tabular">
             {doc.date && <span>{fmt(doc.date)}</span>}
             {doc.authorName && (
               <>

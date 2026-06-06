@@ -21,13 +21,13 @@ export function ViewToggle() {
           <Link
             key={v.id}
             href={v.href}
-            className={`px-3 py-1.5 rounded-[7px] text-[13px] font-medium inline-flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-[7px] text-[14px] font-medium inline-flex items-center gap-1.5 ${
               active
                 ? "bg-surface text-text shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                 : "text-text-dim hover:text-text"
             }`}
           >
-            <span className="text-[13px]">{v.icon}</span>
+            <span className="text-[14px]">{v.icon}</span>
             {v.label}
           </Link>
         );

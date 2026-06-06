@@ -41,7 +41,7 @@ export function NavItem({
       title={collapsed ? label : undefined}
     >
       <span
-        className="w-[18px] text-center text-[15px] flex-shrink-0"
+        className="w-[18px] text-center text-[16px] flex-shrink-0"
         style={iconColor ? { color: iconColor } : undefined}
       >
         {icon}

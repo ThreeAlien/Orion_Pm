@@ -34,7 +34,7 @@ export function ArchiveProjectButton({
       type="button"
       onClick={handleClick}
       disabled={pending}
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red/[.08] hover:bg-red/[.16] border border-red/30 text-red text-[11px] font-semibold cursor-pointer disabled:opacity-40 transition-colors"
+      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red/[.08] hover:bg-red/[.16] border border-red/30 text-red text-[12.5px] font-semibold cursor-pointer disabled:opacity-40 transition-colors"
       title="封存專案（之後可在「📦 封存區」還原）"
       aria-label={`封存 ${name}`}
     >

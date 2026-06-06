@@ -79,7 +79,7 @@ export function AssigneePicker({
         {selected.map((u) => (
           <span
             key={u.id}
-            className="inline-flex items-center gap-1.5 pl-1 pr-1.5 py-0.5 rounded-full bg-blue/[.1] text-blue text-[12px] font-medium"
+            className="inline-flex items-center gap-1.5 pl-1 pr-1.5 py-0.5 rounded-full bg-blue/[.1] text-blue text-[13px] font-medium"
           >
             <Dot user={u} size={16} />
             <span className="max-w-[8rem] truncate">{u.name}</span>
@@ -100,7 +100,7 @@ export function AssigneePicker({
               setOpen(true);
               setQuery("");
             }}
-            className="inline-flex items-center px-2.5 py-1 rounded-full border border-dashed border-rule text-[12px] text-text-dim hover:text-blue hover:border-blue cursor-pointer"
+            className="inline-flex items-center px-2.5 py-1 rounded-full border border-dashed border-rule text-[13px] text-text-dim hover:text-blue hover:border-blue cursor-pointer"
           >
             ＋ 加負責人
           </button>
@@ -135,7 +135,7 @@ export function AssigneePicker({
                 >
                   <Dot user={u} size={20} />
                   <span className="flex-1 truncate">{u.name}</span>
-                  <span className="text-[11px] text-blue">＋</span>
+                  <span className="text-[12.5px] text-blue">＋</span>
                 </button>
               ))
             )}

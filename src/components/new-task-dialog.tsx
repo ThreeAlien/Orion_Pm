@@ -246,7 +246,7 @@ export function NewTaskDialog({
 
           {/* Footer */}
           <div className="px-6 py-3 border-t border-rule flex items-center gap-2">
-            <span className="text-[11px] text-text-faint">⌘ Enter 送出</span>
+            <span className="text-[12.5px] text-text-faint">⌘ Enter 送出</span>
             <div className="flex-1" />
             <button
               type="button"
@@ -280,7 +280,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+      <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
         {label}
         {required && <span className="text-red ml-1">*</span>}
       </div>

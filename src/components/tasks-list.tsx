@@ -161,7 +161,7 @@ export function TasksList({
             <select
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
-              className={`px-2.5 py-[5px] rounded-full text-[13px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
+              className={`px-2.5 py-[5px] rounded-full text-[14px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
                 assigneeFilter
                   ? "bg-text text-surface"
                   : "bg-rule-soft text-text hover:bg-[#EAEAEF]"
@@ -192,7 +192,7 @@ export function TasksList({
       <div className="flex-1 overflow-auto -mx-6 px-6 mt-4">
         <div className="min-w-[900px]">
           {/* Table head — 點 column 切換 sort */}
-          <div className="grid grid-cols-[40px_1fr_140px_120px_100px_120px_110px] gap-3 px-3 pb-2 text-[11px] text-text-faint font-semibold uppercase tracking-wider border-b border-rule">
+          <div className="grid grid-cols-[40px_1fr_140px_120px_100px_120px_110px] gap-3 px-3 pb-2 text-[12.5px] text-text-faint font-semibold uppercase tracking-wider border-b border-rule">
             <div>#</div>
             <SortableHead
               label="任務"
@@ -240,7 +240,7 @@ export function TasksList({
               if (colTasks.length === 0) return null;
               return (
                 <div key={col.status}>
-                  <div className="px-3 pt-4 pb-2 text-[11px] font-bold tracking-tight flex items-center gap-2">
+                  <div className="px-3 pt-4 pb-2 text-[12.5px] font-bold tracking-tight flex items-center gap-2">
                     <span
                       className={`w-[18px] h-[3px] rounded-sm ${statusMap[col.status].dot}`}
                     />
@@ -300,7 +300,7 @@ function Header({
   return (
     <div className="flex items-center gap-3.5 mb-2 flex-wrap">
       <h1 className="text-[28px] font-bold tracking-tight">Tasks</h1>
-      <span className="text-[13px] text-text-dim tabular">{total} 個任務</span>
+      <span className="text-[14px] text-text-dim tabular">{total} 個任務</span>
       {sortKey && (
         <button
           onClick={onReset}
@@ -336,7 +336,7 @@ function SortableHead({
       } ${className}`}
     >
       <span>{label}</span>
-      {active && <span className="text-[10px]">{dir === "asc" ? "▲" : "▼"}</span>}
+      {active && <span className="text-[11px]">{dir === "asc" ? "▲" : "▼"}</span>}
     </button>
   );
 }
@@ -374,7 +374,7 @@ function Row({
       <div>
         {project ? (
           <span
-            className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[11px] font-semibold"
+            className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold"
             style={projectChipStyle(project.color)}
           >
             {project.name}
@@ -462,7 +462,7 @@ function Avatar({
   };
   return (
     <div
-      className={`w-5 h-5 rounded-full bg-gradient-to-br ${map[gradient]} text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0`}
+      className={`w-5 h-5 rounded-full bg-gradient-to-br ${map[gradient]} text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0`}
     >
       {initial}
     </div>

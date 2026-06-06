@@ -245,7 +245,7 @@ export function GanttView({
         <div className="flex-1 overflow-auto min-h-0">
           <div className="grid grid-cols-[240px_minmax(900px,1fr)] min-w-[1100px] relative">
             {/* corner */}
-            <div className="px-3.5 py-3 text-[11px] text-text-faint font-bold uppercase tracking-wider border-r border-rule border-b-2 border-b-rule sticky left-0 bg-surface z-20">
+            <div className="px-3.5 py-3 text-[12.5px] text-text-faint font-bold uppercase tracking-wider border-r border-rule border-b-2 border-b-rule sticky left-0 bg-surface z-20">
               {mode === "projects" ? "專案" : "任務"}
             </div>
             {/* time header */}
@@ -257,7 +257,7 @@ export function GanttView({
               {weeks.map((w, i) => (
                 <div
                   key={i}
-                  className={`py-2.5 text-[11px] text-center tabular border-r border-rule-soft ${
+                  className={`py-2.5 text-[12.5px] text-center tabular border-r border-rule-soft ${
                     w.isMonthStart ? "border-l-2 border-rule" : ""
                   } ${
                     w.isToday
@@ -286,7 +286,7 @@ export function GanttView({
                 ))}
                 {completedProjects.length > 0 && (
                   <>
-                    <div className="px-3.5 py-2.5 text-[11px] text-text-faint font-semibold border-r border-rule border-b border-rule sticky left-0 bg-surface-2 z-10">
+                    <div className="px-3.5 py-2.5 text-[12.5px] text-text-faint font-semibold border-r border-rule border-b border-rule sticky left-0 bg-surface-2 z-10">
                       已完成（{completedProjects.length}）
                     </div>
                     <div
@@ -369,7 +369,7 @@ function Header({
   return (
     <div className="flex items-center gap-3.5 mb-4 flex-wrap">
       <h1 className="text-[28px] font-bold tracking-tight">Gantt</h1>
-      <span className="text-[13px] text-text-dim">{subtitle}</span>
+      <span className="text-[14px] text-text-dim">{subtitle}</span>
       <div className="flex-1" />
       <ViewToggle />
     </div>
@@ -406,7 +406,7 @@ function Toolbar({
       <div className="inline-flex p-[3px] bg-rule-soft rounded-[10px] gap-0.5">
         <Link
           href={zoom !== "week" ? `/gantt?zoom=${zoom}` : "/gantt"}
-          className={`px-3.5 py-1.5 rounded-[7px] text-[13px] font-semibold cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-[7px] text-[14px] font-semibold cursor-pointer ${
             mode === "projects"
               ? "bg-text text-surface"
               : "text-text-dim hover:text-text"
@@ -416,7 +416,7 @@ function Toolbar({
         </Link>
         <Link
           href={`/gantt?level=tasks${firstProjectId ? `&project=${firstProjectId}` : ""}${zoom !== "week" ? `&zoom=${zoom}` : ""}`}
-          className={`px-3.5 py-1.5 rounded-[7px] text-[13px] font-semibold cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-[7px] text-[14px] font-semibold cursor-pointer ${
             mode === "tasks"
               ? "bg-text text-surface"
               : "text-text-dim hover:text-text"
@@ -432,7 +432,7 @@ function Toolbar({
           <Link
             key={z}
             href={buildZoomHref(z)}
-            className={`px-3 py-1.5 rounded-[7px] text-[12px] font-medium cursor-pointer ${
+            className={`px-3 py-1.5 rounded-[7px] text-[13px] font-medium cursor-pointer ${
               zoom === z
                 ? "bg-surface text-text shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                 : "text-text-dim hover:text-text"
@@ -453,7 +453,7 @@ function Toolbar({
                 <Link
                   key={p.id}
                   href={`/gantt?level=tasks&project=${p.id}`}
-                  className={`px-3 py-1 rounded-[7px] text-[12px] font-medium cursor-pointer inline-flex items-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-[7px] text-[13px] font-medium cursor-pointer inline-flex items-center gap-1.5 ${
                     selectedProjectId === p.id
                       ? "bg-surface text-text shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                       : "text-text-dim hover:text-text"
@@ -601,9 +601,9 @@ function ProjectRow({
           <span className={`font-semibold text-sm ${completed ? "text-text-dim" : ""}`}>
             {project.name}
           </span>
-          <span className="ml-auto text-[10px] text-text-faint">→ 任務級</span>
+          <span className="ml-auto text-[11px] text-text-faint">→ 任務級</span>
         </div>
-        <div className="flex gap-2 text-[11px] text-text-dim mt-1.5 pl-[22px] tabular">
+        <div className="flex gap-2 text-[12.5px] text-text-dim mt-1.5 pl-[22px] tabular">
           {completed ? (
             <span className="text-green font-semibold">✓ 已完成</span>
           ) : (
@@ -653,7 +653,7 @@ function ProjectRow({
             label={
               <>
                 <span>{project.name}</span>
-                <span className="opacity-90 tabular text-[11px]">{project.completionRate}%</span>
+                <span className="opacity-90 tabular text-[12.5px]">{project.completionRate}%</span>
               </>
             }
             title={`${project.name} · ${project.completionRate}% · 拖拉平移日期`}
@@ -672,13 +672,13 @@ function ProjectRow({
             label={
               <>
                 <span>{project.name}</span>
-                <span className="opacity-90 tabular text-[11px]">{project.completionRate}%</span>
+                <span className="opacity-90 tabular text-[12.5px]">{project.completionRate}%</span>
               </>
             }
             title={`${project.name} · 已完成`}
           />
         ) : (
-          <div className="absolute left-3 text-[11px] text-text-faint top-1/2 -translate-y-1/2">
+          <div className="absolute left-3 text-[12.5px] text-text-faint top-1/2 -translate-y-1/2">
             {project.endDate && project.endDate < start
               ? `${fmt(project.endDate)} 已結案 · 不在此期間`
               : project.startDate && project.startDate > end
@@ -761,9 +761,9 @@ function TaskRow({
             style={{ background: statusDotColor[task.status] }}
             title={statusLabel[task.status]}
           />
-          <span className="font-medium text-[13px] truncate">{task.title}</span>
+          <span className="font-medium text-[14px] truncate">{task.title}</span>
         </div>
-        <div className="flex gap-2 text-[11px] text-text-dim mt-1 pl-5 tabular">
+        <div className="flex gap-2 text-[12.5px] text-text-dim mt-1 pl-5 tabular">
           {task.assigneeName && <span>{task.assigneeName}</span>}
           <span>· {fmt(task.dueDate)} 截止</span>
         </div>
@@ -868,7 +868,7 @@ function DraggableBar({
       {fill}
       <div
         className={`relative flex items-center gap-1.5 ${
-          small ? "text-[11px]" : "text-xs"
+          small ? "text-[12.5px]" : "text-xs"
         } font-${small ? "semibold" : "bold"} text-white truncate`}
       >
         {label}

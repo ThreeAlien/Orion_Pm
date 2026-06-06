@@ -24,7 +24,7 @@ export function RemoveMemberButton({
   if (isSelf) {
     return (
       <span
-        className="text-[10px] text-text-faint italic"
+        className="text-[11px] text-text-faint italic"
         title="登入身份不能移除自己"
       >
         （你自己）
@@ -64,13 +64,13 @@ export function RemoveMemberButton({
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="text-[11px] px-2 py-1 rounded-md text-text-faint hover:text-red hover:bg-red/[.08] cursor-pointer disabled:opacity-40 transition-colors"
+        className="text-[12.5px] px-2 py-1 rounded-md text-text-faint hover:text-red hover:bg-red/[.08] cursor-pointer disabled:opacity-40 transition-colors"
         title={`移除 ${memberName}`}
       >
         {pending ? "移除中..." : "移除"}
       </button>
       {error && (
-        <div className="text-[10px] text-red mt-1">{error}</div>
+        <div className="text-[11px] text-red mt-1">{error}</div>
       )}
     </>
   );

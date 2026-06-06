@@ -192,11 +192,11 @@ export function ResponsiveLayout({
               <button
                 type="button"
                 onClick={() => setProjectsOpen((o) => !o)}
-                className="w-full flex items-center gap-1 px-2.5 pt-1.5 pb-1 text-[11px] text-text-faint font-semibold uppercase tracking-wider hover:text-text cursor-pointer"
+                className="w-full flex items-center gap-1 px-2.5 pt-1.5 pb-1 text-[12.5px] text-text-faint font-semibold uppercase tracking-wider hover:text-text cursor-pointer"
               >
                 <span className="flex-1 text-left">專案</span>
                 <span className="tabular opacity-70">{projectsWithTasks.length}</span>
-                <span className="ml-1 text-[10px]">{projectsOpen ? "▾" : "▸"}</span>
+                <span className="ml-1 text-[11px]">{projectsOpen ? "▾" : "▸"}</span>
               </button>
               {projectsOpen &&
                 projectsWithTasks.map((p) => (
@@ -247,7 +247,7 @@ function NavBlock({
   return (
     <div className="mb-[18px]">
       {!collapsed && (
-        <div className="px-2.5 pt-1.5 pb-1 text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+        <div className="px-2.5 pt-1.5 pb-1 text-[12.5px] text-text-faint font-semibold uppercase tracking-wider">
           {label}
         </div>
       )}
@@ -286,7 +286,7 @@ function UserMenu({
           />
         ) : (
           <div
-            className={`w-8 h-8 rounded-full text-white font-semibold text-[13px] flex items-center justify-center ${
+            className={`w-8 h-8 rounded-full text-white font-semibold text-[14px] flex items-center justify-center ${
               user.avatarColor ? "" : "bg-gradient-to-br from-blue to-purple"
             }`}
             style={
@@ -323,7 +323,7 @@ function UserMenu({
           />
         ) : (
           <div
-            className={`w-8 h-8 rounded-full text-white font-semibold text-[13px] flex items-center justify-center ${
+            className={`w-8 h-8 rounded-full text-white font-semibold text-[14px] flex items-center justify-center ${
               user.avatarColor ? "" : "bg-gradient-to-br from-blue to-purple"
             }`}
             style={
@@ -336,14 +336,14 @@ function UserMenu({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-[13px] truncate">{user.name}</div>
-          <div className="text-[11px] text-text-dim">線上</div>
+          <div className="font-semibold text-[14px] truncate">{user.name}</div>
+          <div className="text-[12.5px] text-text-dim">線上</div>
         </div>
       </div>
       <button
         type="button"
         onClick={() => signOut({ callbackUrl: "/login" })}
-        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[13px] font-medium text-text-dim hover:text-red hover:bg-red/[.08] cursor-pointer transition-colors"
+        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] font-medium text-text-dim hover:text-red hover:bg-red/[.08] cursor-pointer transition-colors"
       >
         <span className="text-base leading-none">↩</span>
         登出

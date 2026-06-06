@@ -49,7 +49,7 @@ export function TeamFilter({
               onClick={() => pick(o.slug)}
               disabled={pending}
               title={o.name}
-              className={`w-9 h-7 rounded-md flex items-center justify-center text-[11px] font-semibold cursor-pointer transition-colors ${
+              className={`w-9 h-7 rounded-md flex items-center justify-center text-[12.5px] font-semibold cursor-pointer transition-colors ${
                 active
                   ? "bg-blue/[.14] text-blue"
                   : "text-text-faint hover:text-text hover:bg-rule-soft"
@@ -65,7 +65,7 @@ export function TeamFilter({
 
   return (
     <div className="mb-3 px-1">
-      <div className="px-1.5 pb-1 text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+      <div className="px-1.5 pb-1 text-[12.5px] text-text-faint font-semibold uppercase tracking-wider">
         團隊
       </div>
       <div className="flex flex-col gap-0.5">
@@ -79,7 +79,7 @@ export function TeamFilter({
                 type="button"
                 onClick={() => pick(o.slug)}
                 disabled={pending}
-                className={`flex-1 min-w-0 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] font-medium cursor-pointer transition-colors text-left ${
+                className={`flex-1 min-w-0 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[14px] font-medium cursor-pointer transition-colors text-left ${
                   active
                     ? "bg-blue/[.12] text-blue"
                     : "text-text-dim hover:text-text hover:bg-rule-soft"
@@ -101,7 +101,7 @@ export function TeamFilter({
                   type="button"
                   onClick={() => setEditingTeam(o as ViewTeam)}
                   title="編輯團隊（改名 / 換色）"
-                  className="w-6 h-6 shrink-0 rounded-md text-text-faint hover:text-blue hover:bg-rule-soft flex items-center justify-center opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 cursor-pointer text-[11px]"
+                  className="w-6 h-6 shrink-0 rounded-md text-text-faint hover:text-blue hover:bg-rule-soft flex items-center justify-center opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 cursor-pointer text-[12.5px]"
                 >
                   ✏
                 </button>
@@ -188,7 +188,7 @@ function TeamEditDialog({
         </div>
         <div className="px-5 py-4 space-y-4">
           <label className="block">
-            <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+            <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
               團隊名稱
             </div>
             <input
@@ -200,7 +200,7 @@ function TeamEditDialog({
             />
           </label>
           <div>
-            <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+            <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
               顏色
             </div>
             <div className="flex gap-2 flex-wrap">

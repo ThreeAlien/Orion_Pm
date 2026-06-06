@@ -125,7 +125,7 @@ function Stat({
 }) {
   return (
     <div className="bg-surface-2 rounded-lg px-3.5 py-3">
-      <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1">
+      <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1">
         {label}
       </div>
       <div

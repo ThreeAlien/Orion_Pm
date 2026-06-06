@@ -29,7 +29,7 @@ export function ProjectsList({
     <div className="bg-surface rounded-2xl p-6 shadow-soft flex-1 flex flex-col min-h-0">
       <div className="flex items-center gap-3.5 mb-5 flex-wrap">
         <h1 className="text-[28px] font-bold tracking-tight">Projects</h1>
-        <span className="text-[13px] text-text-dim tabular">
+        <span className="text-[14px] text-text-dim tabular">
           {projects.length} 個專案
         </span>
         <div className="flex-1" />
@@ -84,17 +84,17 @@ function ProjectCard({
             <ArchiveProjectButton id={project.id} name={project.name} />
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold ${status.bg}`}>
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12.5px] font-semibold ${status.bg}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
               {status.label}
             </span>
             {project.teamName && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rule-soft text-text-dim">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold bg-rule-soft text-text-dim">
                 {project.teamName}
               </span>
             )}
             {projectCategoryLabel(project.category) && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue/[.12] text-blue">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold bg-blue/[.12] text-blue">
                 {projectCategoryLabel(project.category)}
               </span>
             )}
@@ -105,7 +105,7 @@ function ProjectCard({
       {/* progress */}
       <div className="mb-4">
         <div className="flex justify-between items-baseline mb-1.5">
-          <span className="text-[11px] text-text-dim font-semibold tracking-wide">進度</span>
+          <span className="text-[12.5px] text-text-dim font-semibold tracking-wide">進度</span>
           <span className="text-lg font-bold tabular tracking-tight" style={{ color: resolveProjectColor(project.color) }}>
             {project.completionRate}%
           </span>
@@ -122,7 +122,7 @@ function ProjectCard({
       </div>
 
       {/* meta */}
-      <div className="grid grid-cols-2 gap-3 text-[11px] text-text-dim">
+      <div className="grid grid-cols-2 gap-3 text-[12.5px] text-text-dim">
         <Meta label="任務" value={`${project.completedTasks}/${project.totalTasks}`} />
         <Meta
           label="負責人"

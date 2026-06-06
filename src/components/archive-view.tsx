@@ -47,7 +47,7 @@ export function ArchiveView({
     <div className="bg-surface rounded-2xl p-6 shadow-soft flex-1 flex flex-col min-h-0">
       <div className="flex items-center gap-3.5 mb-5 flex-wrap">
         <h1 className="text-[28px] font-bold tracking-tight">封存區</h1>
-        <span className="text-[13px] text-text-dim tabular">
+        <span className="text-[14px] text-text-dim tabular">
           {total} 筆已封存
         </span>
       </div>
@@ -122,7 +122,7 @@ function TaskRow({ task }: { task: ArchivedTask }) {
     <div className="bg-surface-2 rounded-lg px-3.5 py-3 flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm">{task.title}</div>
-        <div className="text-[11px] text-text-dim mt-0.5 flex gap-2 items-center tabular">
+        <div className="text-[12.5px] text-text-dim mt-0.5 flex gap-2 items-center tabular">
           <span>{STATUS_LABEL[task.status] ?? task.status}</span>
           {task.projectName && (
             <>
@@ -164,7 +164,7 @@ function ProjectRow({ project }: { project: ArchivedProject }) {
       </span>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm">{project.name}</div>
-        <div className="text-[11px] text-text-dim mt-0.5 tabular">
+        <div className="text-[12.5px] text-text-dim mt-0.5 tabular">
           封存於 {fmt(project.archivedAt)}
         </div>
       </div>
@@ -195,7 +195,7 @@ function DocumentRow({ doc }: { doc: ArchivedDocument }) {
       </span>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm">{doc.name}</div>
-        <div className="text-[11px] text-text-dim mt-0.5 tabular">
+        <div className="text-[12.5px] text-text-dim mt-0.5 tabular">
           封存於 {fmt(doc.archivedAt)}
         </div>
       </div>

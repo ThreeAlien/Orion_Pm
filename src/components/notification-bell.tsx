@@ -96,7 +96,7 @@ export function NotificationBell() {
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red text-white text-[10px] font-bold flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red text-white text-[11px] font-bold flex items-center justify-center">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -110,7 +110,7 @@ export function NotificationBell() {
             {unread > 0 && (
               <button
                 onClick={markAll}
-                className="text-[11px] text-blue hover:underline cursor-pointer"
+                className="text-[12.5px] text-blue hover:underline cursor-pointer"
               >
                 全部標為已讀
               </button>
@@ -134,11 +134,11 @@ export function NotificationBell() {
                     <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue flex-shrink-0" />
                   )}
                   <span className={`flex-1 min-w-0 ${n.read ? "pl-3.5" : ""}`}>
-                    <span className="text-[13px] leading-snug block">
+                    <span className="text-[14px] leading-snug block">
                       <b>{n.actorName ?? "有人"}</b> 在「
                       {n.taskTitle ?? "（任務已刪除）"}」提及了你
                     </span>
-                    <span className="text-[11px] text-text-faint">
+                    <span className="text-[12.5px] text-text-faint">
                       {timeAgo(n.createdAtIso)}
                     </span>
                   </span>

@@ -64,14 +64,14 @@ export default async function LoginPage({
                 Google Cloud Console
               </a>{" "}
               建立 OAuth 2.0 Client，把 ID / Secret 填到{" "}
-              <code className="bg-surface px-1 py-0.5 rounded text-[11px]">.env</code>
+              <code className="bg-surface px-1 py-0.5 rounded text-[12.5px]">.env</code>
             </p>
           </div>
         )}
 
         {isDev && (
           <div className="mt-6 pt-6 border-t border-rule">
-            <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-3">
+            <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-3">
               開發測試（僅 dev 模式）
             </div>
             <form

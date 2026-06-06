@@ -60,6 +60,11 @@
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 }
 
+/* 整體字級放大：root 拉到 108%，帶動所有 rem 類（text-sm/xs/base/lg…）。
+   寫死 px 的小級距另外在元件層 +1~2px 一起調，避免畫面字太小看得吃力。 */
+html {
+  font-size: 108%;
+}
 html,
 body {
   background: var(--background);

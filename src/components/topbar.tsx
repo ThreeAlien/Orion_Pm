@@ -39,14 +39,14 @@ export function Topbar({
           className="flex-1 min-w-0 sm:max-w-[420px] bg-rule-soft border-0 px-3 sm:px-3.5 py-2 rounded-[10px] text-sm focus:outline-none focus:bg-[#EAEAEF]"
           placeholder="搜尋..."
         />
-        <span className="hidden sm:inline-flex text-[11px] text-text-faint bg-surface-3 px-1.5 py-0.5 rounded-md">
+        <span className="hidden sm:inline-flex text-[12.5px] text-text-faint bg-surface-3 px-1.5 py-0.5 rounded-md">
           ⌘ K
         </span>
         <div className="hidden md:block flex-1" />
         <NotificationBell />
         <button
           onClick={() => setDialogOpen(true)}
-          className="bg-blue text-white px-2.5 sm:px-3.5 py-2 rounded-[10px] font-semibold text-[13px] cursor-pointer hover:brightness-95 whitespace-nowrap flex-shrink-0"
+          className="bg-blue text-white px-2.5 sm:px-3.5 py-2 rounded-[10px] font-semibold text-[14px] cursor-pointer hover:brightness-95 whitespace-nowrap flex-shrink-0"
         >
           <span className="sm:hidden">＋</span>
           <span className="hidden sm:inline">＋ 新任務</span>

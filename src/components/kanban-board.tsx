@@ -114,6 +114,8 @@ export function KanbanBoard({
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 從哪個頁面點進來開卡的（行事曆等）→ 關閉時導回；null = 一般在看板開
+  const [returnTo, setReturnTo] = useState<string | null>(null);
   const mentionedSet = useMemo(
     () => new Set(unreadMentionTaskIds ?? []),
     [unreadMentionTaskIds],
@@ -136,20 +138,32 @@ export function KanbanBoard({
   useEffect(() => {
     if (!selectedId) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedId(null);
+      if (e.key === "Escape") closeDrawer();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [selectedId]);
 
-  // 從通知點進來：/?task=<id> 自動開該卡 drawer，開完把 query 清掉避免重整又彈開
+  // 從通知 / 行事曆點進來：/?task=<id> 自動開該卡 drawer，開完把 query 清掉避免重整又彈開。
+  // from=cal → 記下「關閉後回行事曆」，讓使用者不用手動點回去
   useEffect(() => {
     const tid = searchParams.get("task");
     if (tid) {
       setSelectedId(tid);
+      setReturnTo(searchParams.get("from") === "cal" ? "/calendar" : null);
       router.replace("/", { scroll: false });
     }
   }, [searchParams, router]);
+
+  // 關閉 drawer：有來源頁（行事曆）就導回去，否則單純關閉
+  function closeDrawer() {
+    setSelectedId(null);
+    if (returnTo) {
+      const dest = returnTo;
+      setReturnTo(null);
+      router.push(dest);
+    }
+  }
 
   // 開到「被 @ 未讀」的卡 → 標已讀（鈴鐺數字 / 卡片標色一起消）
   useEffect(() => {
@@ -274,7 +288,8 @@ export function KanbanBoard({
           projects={projects}
           users={users ?? []}
           currentUserId={currentUserId}
-          onClose={() => setSelectedId(null)}
+          onClose={closeDrawer}
+          backLabel={returnTo === "/calendar" ? "行事曆" : null}
         />
       </DndContext>
     </MentionedTasksContext.Provider>
@@ -314,7 +329,7 @@ function FilterRow({
       <FilterChip active={noFilter} onClick={onClear}>
         全部{" "}
         <span
-          className={`text-[11px] tabular ${
+          className={`text-[12.5px] tabular ${
             noFilter ? "text-white/60" : "text-text-faint"
           }`}
         >
@@ -325,7 +340,7 @@ function FilterRow({
         <select
           value={assigneeFilter}
           onChange={(e) => onAssigneeChange(e.target.value)}
-          className={`px-2.5 py-[5px] rounded-full text-[13px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
+          className={`px-2.5 py-[5px] rounded-full text-[14px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
             assigneeFilter
               ? "bg-text text-surface"
               : "bg-rule-soft text-text hover:bg-[#EAEAEF]"
@@ -352,7 +367,7 @@ function FilterRow({
             <FilterDot color={p.color} />
             {p.name}{" "}
             <span
-              className={`text-[11px] tabular ${
+              className={`text-[12.5px] tabular ${
                 active ? "text-white/60" : "text-text-faint"
               }`}
             >
@@ -362,7 +377,7 @@ function FilterRow({
         );
       })}
       {!noFilter && (
-        <span className="text-[11px] text-text-faint ml-2 tabular">
+        <span className="text-[12.5px] text-text-faint ml-2 tabular">
           已選 {selectedProjectIds.size} 個專案 · 點專案 chip 取消
         </span>
       )}
@@ -383,7 +398,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full text-[13px] font-medium cursor-pointer transition-colors ${
+      className={`inline-flex items-center gap-1.5 px-2.5 py-[5px] rounded-full text-[14px] font-medium cursor-pointer transition-colors ${
         active
           ? "bg-text text-surface"
           : "bg-rule-soft text-text hover:bg-[#EAEAEF]"
@@ -430,7 +445,7 @@ function KanbanColumn({
     >
       <div className="px-3.5 pt-3 pb-2.5 flex items-center gap-2">
         <div className={`w-[18px] h-[3px] rounded-sm ${barColorMap[bar]}`} />
-        <span className="text-[13px] font-bold tracking-tight">{label}</span>
+        <span className="text-[14px] font-bold tracking-tight">{label}</span>
         <span className="text-xs text-text-faint tabular font-medium">
           {tasks.length}
         </span>
@@ -572,13 +587,13 @@ function TaskCardInner({
 
       <div className="flex gap-1 mb-2 flex-wrap pr-6">
         {mentioned && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[11px] font-semibold bg-orange/[.15] text-orange">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-orange/[.15] text-orange">
             @ 提及你
           </span>
         )}
         {project && <ProjectTag project={project} />}
         {task.priority === "HIGH" && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[11px] font-semibold bg-red/[.12] text-red">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-red/[.12] text-red">
             🔥 高
           </span>
         )}
@@ -609,21 +624,21 @@ function TaskCardInner({
         </div>
       )}
 
-      <div className="flex items-center gap-2 text-[11px] text-text-dim">
+      <div className="flex items-center gap-2 text-[12.5px] text-text-dim">
         <div className="flex items-center gap-1.5">
           <AssigneeAvatars task={task} />
           {task.subtasks && (
-            <span className="text-[11px] text-text-faint inline-flex items-center gap-0.5">
+            <span className="text-[12.5px] text-text-faint inline-flex items-center gap-0.5">
               ▦ {task.subtasks.done}/{task.subtasks.total}
             </span>
           )}
           {task.checklist && (
-            <span className="text-[11px] text-text-faint inline-flex items-center gap-0.5">
+            <span className="text-[12.5px] text-text-faint inline-flex items-center gap-0.5">
               ☑ {task.checklist.done}/{task.checklist.total}
             </span>
           )}
           {task.commentCount != null && task.commentCount > 0 && (
-            <span className="text-[11px] text-text-faint inline-flex items-center gap-0.5">
+            <span className="text-[12.5px] text-text-faint inline-flex items-center gap-0.5">
               💬 {task.commentCount}
             </span>
           )}
@@ -644,12 +659,15 @@ export function TaskDrawer({
   users,
   currentUserId,
   onClose,
+  backLabel,
 }: {
   task: ViewTask | null;
   projects: ViewProject[];
   users: ViewUser[];
   currentUserId?: string;
   onClose: () => void;
+  // 有值時 header 顯示「← {backLabel}」返回鈕（如從行事曆點進來）
+  backLabel?: string | null;
 }) {
   const open = task !== null;
   const [, startTransition] = useTransition();
@@ -828,7 +846,16 @@ export function TaskDrawer({
         {task && (
           <>
             <div className="px-6 py-4 border-b border-rule flex items-center gap-3">
-              <span className="text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+              {backLabel && (
+                <button
+                  onClick={onClose}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rule-soft hover:bg-rule text-[13px] font-medium text-text-dim cursor-pointer"
+                  title={`返回${backLabel}`}
+                >
+                  ← {backLabel}
+                </button>
+              )}
+              <span className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider">
                 編輯任務
               </span>
               <div className="flex-1" />
@@ -925,7 +952,7 @@ export function TaskDrawer({
                   return null;
                 return (
                   <div className="bg-surface-2 rounded-lg px-3.5 py-3">
-                    <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-2">
+                    <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-2">
                       所屬專案客戶資訊
                     </div>
                     <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
@@ -963,7 +990,7 @@ export function TaskDrawer({
 
               {/* 右欄：留言與動態（寬螢幕並排，省去縱向捲動）*/}
               <div className="min-w-0 pt-4 border-t border-rule lg:pt-0 lg:border-t-0 lg:border-l lg:pl-6">
-                <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-3">
+                <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-3">
                   留言與動態
                 </div>
 
@@ -984,7 +1011,7 @@ export function TaskDrawer({
                               <span className="text-sm font-semibold truncate">
                                 {item.author.name}
                               </span>
-                              <span className="text-[11px] text-text-faint">
+                              <span className="text-[12.5px] text-text-faint">
                                 {relTime(item.createdAtIso)}
                                 {item.edited && "・已編輯"}
                               </span>
@@ -997,13 +1024,13 @@ export function TaskDrawer({
                                         setEditingId(item.id);
                                         setEditBody(item.body);
                                       }}
-                                      className="text-[11px] text-text-faint hover:text-blue cursor-pointer"
+                                      className="text-[12.5px] text-text-faint hover:text-blue cursor-pointer"
                                     >
                                       編輯
                                     </button>
                                     <button
                                       onClick={() => handleDeleteComment(item.id)}
-                                      className="text-[11px] text-text-faint hover:text-red cursor-pointer"
+                                      className="text-[12.5px] text-text-faint hover:text-red cursor-pointer"
                                     >
                                       刪除
                                     </button>
@@ -1225,11 +1252,11 @@ function ChecklistSection({ taskId }: { taskId: string }) {
   return (
     <div className="pt-4 border-t border-rule">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+        <span className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider">
           工作清單
         </span>
         {items.length > 0 && (
-          <span className="text-[11px] text-text-faint tabular">
+          <span className="text-[12.5px] text-text-faint tabular">
             {done}/{items.length}
           </span>
         )}
@@ -1373,13 +1400,13 @@ function ChecklistRow({
           <button
             onClick={onSaveEdit}
             disabled={!editContent.trim()}
-            className="text-[11px] text-blue font-semibold cursor-pointer disabled:opacity-40"
+            className="text-[12.5px] text-blue font-semibold cursor-pointer disabled:opacity-40"
           >
             存
           </button>
           <button
             onClick={onCancelEdit}
-            className="text-[11px] text-text-faint cursor-pointer"
+            className="text-[12.5px] text-text-faint cursor-pointer"
           >
             取消
           </button>
@@ -1397,13 +1424,13 @@ function ChecklistRow({
           <span className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <button
               onClick={onStartEdit}
-              className="text-[11px] text-text-faint hover:text-blue cursor-pointer"
+              className="text-[12.5px] text-text-faint hover:text-blue cursor-pointer"
             >
               編輯
             </button>
             <button
               onClick={onDelete}
-              className="text-[11px] text-text-faint hover:text-red cursor-pointer"
+              className="text-[12.5px] text-text-faint hover:text-red cursor-pointer"
             >
               刪除
             </button>
@@ -1423,7 +1450,7 @@ function DrawerField({
 }) {
   return (
     <label className="block">
-      <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+      <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
         {label}
       </div>
       {children}
@@ -1472,7 +1499,7 @@ function TimelineAvatar({ author }: { author: TimelineAuthor }) {
   const custom = author.avatarColor;
   return (
     <div
-      className={`w-7 h-7 shrink-0 rounded-full text-white text-[11px] font-bold flex items-center justify-center ${
+      className={`w-7 h-7 shrink-0 rounded-full text-white text-[12.5px] font-bold flex items-center justify-center ${
         custom ? "" : `bg-gradient-to-br ${avatarGradientMap[author.gradient]}`
       }`}
       style={custom ? { background: resolveProjectColor(custom) } : undefined}
@@ -1517,7 +1544,7 @@ function activityText(a: ViewActivity): string {
 function ProjectTag({ project }: { project: ViewProject }) {
   return (
     <span
-      className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[11px] font-semibold"
+      className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold"
       style={projectChipStyle(project.color)}
     >
       {project.name}
@@ -1535,7 +1562,7 @@ function MiniAvatar({ user }: { user: ViewUser }) {
   const custom = user.avatarColor;
   return (
     <div
-      className={`w-[18px] h-[18px] rounded-full text-white text-[9px] font-bold flex items-center justify-center ring-1 ring-surface ${
+      className={`w-[18px] h-[18px] rounded-full text-white text-[10px] font-bold flex items-center justify-center ring-1 ring-surface ${
         custom ? "" : `bg-gradient-to-br ${map[user.gradient]}`
       }`}
       style={custom ? { background: resolveProjectColor(custom) } : undefined}
@@ -1565,7 +1592,7 @@ function AssigneeAvatars({ task }: { task: ViewTask }) {
         ))}
       </div>
       {extra > 0 && (
-        <span className="ml-1 text-[10px] text-text-faint tabular">+{extra}</span>
+        <span className="ml-1 text-[11px] text-text-faint tabular">+{extra}</span>
       )}
     </div>
   );
@@ -1586,7 +1613,7 @@ function DuePill({
   };
   return (
     <span
-      className={`text-[11px] px-1.5 py-0.5 rounded-[5px] font-semibold tabular ml-auto ${map[kind]}`}
+      className={`text-[12.5px] px-1.5 py-0.5 rounded-[5px] font-semibold tabular ml-auto ${map[kind]}`}
     >
       {children}
     </span>
@@ -1662,13 +1689,13 @@ function LinkSection({ taskId }: { taskId: string }) {
   return (
     <div className="pt-4 border-t border-rule">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+        <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider">
           聯繫卡片
         </div>
         <button
           type="button"
           onClick={() => (picking ? setPicking(false) : openPicker())}
-          className="text-[11px] text-blue hover:underline cursor-pointer"
+          className="text-[12.5px] text-blue hover:underline cursor-pointer"
         >
           {picking ? "收起" : "＋ 聯繫卡片"}
         </button>
@@ -1696,7 +1723,7 @@ function LinkSection({ taskId }: { taskId: string }) {
                   {l.title}
                 </span>
                 {l.teamName && (
-                  <span className="text-[10px] text-text-faint shrink-0">
+                  <span className="text-[11px] text-text-faint shrink-0">
                     {l.teamName}
                   </span>
                 )}
@@ -1741,7 +1768,7 @@ function LinkSection({ taskId }: { taskId: string }) {
                 >
                   <span className="flex-1 text-sm truncate">{c.title}</span>
                   {c.teamName && (
-                    <span className="text-[10px] text-text-faint shrink-0">
+                    <span className="text-[11px] text-text-faint shrink-0">
                       {c.teamName}
                     </span>
                   )}
@@ -1794,7 +1821,7 @@ function TaskPeek({ id, onClose }: { id: string; onClose: () => void }) {
         className="relative bg-surface rounded-2xl shadow-2xl w-[420px] max-w-[92vw] max-h-[80dvh] overflow-auto"
       >
         <div className="px-5 py-3 border-b border-rule flex items-center gap-2">
-          <span className="text-[11px] text-text-faint font-semibold uppercase tracking-wider">
+          <span className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider">
             卡片預覽
           </span>
           <div className="flex-1" />
@@ -1817,7 +1844,7 @@ function TaskPeek({ id, onClose }: { id: string; onClose: () => void }) {
         ) : (
           <div className="px-5 py-4 space-y-3">
             <div className="text-lg font-bold tracking-tight">{peek.title}</div>
-            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
               <span className="px-2 py-0.5 rounded-md bg-surface-2 font-semibold">
                 {statusOptions.find((s) => s.value === peek.status)?.label ??
                   peek.status}

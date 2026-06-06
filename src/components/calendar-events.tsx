@@ -167,7 +167,7 @@ function EventDialog({
           <h2 className="text-base font-bold tracking-tight">
             {isEdit ? "編輯事件" : "新增事件"}
           </h2>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-green/[.14] text-green font-semibold">
+          <span className="text-[11px] px-1.5 py-0.5 rounded bg-green/[.14] text-green font-semibold">
             Google 同步
           </span>
           <div className="flex-1" />
@@ -285,7 +285,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+      <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
         {label}
         {required && <span className="text-red ml-1">*</span>}
       </div>
@@ -302,7 +302,7 @@ export function NewEventButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="bg-green text-white px-3.5 py-2 rounded-[10px] font-semibold text-[13px] cursor-pointer hover:brightness-95"
+        className="bg-green text-white px-3.5 py-2 rounded-[10px] font-semibold text-[14px] cursor-pointer hover:brightness-95"
       >
         ＋ 新增事件
       </button>
@@ -327,7 +327,7 @@ export function EventChip({ event }: { event: CalEventItem }) {
         title={`${event.title}${
           event.calendarName ? `（${event.calendarName}）` : ""
         }（Google 事件，點擊編輯）`}
-        className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] bg-text text-surface hover:opacity-85 cursor-pointer text-left"
+        className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[12px] bg-text text-surface hover:opacity-85 cursor-pointer text-left"
       >
         {event.calendarName && event.calendarColor ? (
           // 別人 / 其他行事曆 → 用該行事曆的 Google 色點標示來源

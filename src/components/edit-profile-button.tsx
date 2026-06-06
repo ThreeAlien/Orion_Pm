@@ -138,7 +138,7 @@ export function EditProfileButton({
         style={{ boxShadow: "var(--shadow-card)" }}
       >
         {children}
-        <span className="absolute top-2.5 right-2.5 text-[10px] px-1.5 py-0.5 rounded bg-blue/[.12] text-blue font-semibold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <span className="absolute top-2.5 right-2.5 text-[11px] px-1.5 py-0.5 rounded bg-blue/[.12] text-blue font-semibold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           ✏ 編輯
         </span>
       </div>
@@ -192,7 +192,7 @@ export function EditProfileButton({
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="px-3 py-1.5 rounded-lg bg-blue/[.1] hover:bg-blue/[.16] text-blue text-[13px] font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-blue/[.1] hover:bg-blue/[.16] text-blue text-[14px] font-semibold cursor-pointer"
               >
                 上傳頭貼
               </button>
@@ -200,7 +200,7 @@ export function EditProfileButton({
                 <button
                   type="button"
                   onClick={handleClearAvatar}
-                  className="px-3 py-1 rounded-lg text-text-faint hover:text-red text-[11px] cursor-pointer text-left"
+                  className="px-3 py-1 rounded-lg text-text-faint hover:text-red text-[12.5px] cursor-pointer text-left"
                 >
                   移除照片改用底色
                 </button>
@@ -217,7 +217,7 @@ export function EditProfileButton({
 
           {/* 頭貼底色 — 永遠可選；有照片時以照片為準，選了底色會蓋過 Google 頭像 */}
           <div>
-            <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+            <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
               頭貼底色
               <span className="ml-1.5 normal-case font-normal text-text-faint/80">
                 （沒上傳照片時用「名字 + 此底色」）
@@ -244,7 +244,7 @@ export function EditProfileButton({
                 <button
                   type="button"
                   onClick={() => setColor("")}
-                  className="text-[11px] text-text-faint hover:text-text underline ml-1 cursor-pointer"
+                  className="text-[12.5px] text-text-faint hover:text-text underline ml-1 cursor-pointer"
                 >
                   清除
                 </button>
@@ -254,7 +254,7 @@ export function EditProfileButton({
 
           {/* 姓名 */}
           <label className="block">
-            <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+            <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
               姓名
             </div>
             <input

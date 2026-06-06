@@ -22,7 +22,7 @@ export function MembersList({
     <div className="bg-surface rounded-2xl p-6 shadow-soft flex-1 flex flex-col min-h-0">
       <div className="flex items-center gap-3.5 mb-5 flex-wrap">
         <h1 className="text-[28px] font-bold tracking-tight">團隊成員</h1>
-        <span className="text-[13px] text-text-dim tabular">
+        <span className="text-[14px] text-text-dim tabular">
           {members.length} 人
         </span>
         <div className="flex-1" />
@@ -99,21 +99,21 @@ function MemberCard({
             </span>
             {isGoogleAccount ? (
               <span
-                className="text-[10px] px-1.5 py-0.5 bg-blue/[.12] text-blue rounded font-semibold"
+                className="text-[11px] px-1.5 py-0.5 bg-blue/[.12] text-blue rounded font-semibold"
                 title="Google 登入帳號"
               >
                 Google
               </span>
             ) : (
               <span
-                className="text-[10px] px-1.5 py-0.5 bg-rule text-text-faint rounded font-semibold"
+                className="text-[11px] px-1.5 py-0.5 bg-rule text-text-faint rounded font-semibold"
                 title="Demo 帳號（seed 灌進來的）"
               >
                 Demo
               </span>
             )}
           </div>
-          <div className="text-[11px] text-text-dim truncate mt-0.5">
+          <div className="text-[12.5px] text-text-dim truncate mt-0.5">
             {member.email}
           </div>
         </div>
@@ -126,7 +126,7 @@ function MemberCard({
       </div>
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-rule">
-        <span className="text-[10px] text-text-faint tabular">
+        <span className="text-[11px] text-text-faint tabular">
           加入於 {fmt(member.joinedAt)}
         </span>
         <RemoveMemberButton
@@ -167,7 +167,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <div className="text-base font-bold tabular">{value}</div>
-      <div className="text-[10px] text-text-faint">{label}</div>
+      <div className="text-[11px] text-text-faint">{label}</div>
     </div>
   );
 }

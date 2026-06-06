@@ -116,10 +116,10 @@ function Header({
     <div className="mb-4">
       <div className="flex items-center gap-3.5 flex-wrap">
         <h1 className="text-[28px] font-bold tracking-tight">Calendar</h1>
-        <span className="text-[13px] text-text-dim tabular">
+        <span className="text-[14px] text-text-dim tabular">
           {tasksCount} 任務
         </span>
-        <span className="text-[13px] text-green tabular">
+        <span className="text-[14px] text-green tabular">
           📅 {eventsCount} Google 事件
         </span>
         <div className="flex-1" />
@@ -213,7 +213,7 @@ function ModeBar({
       <div className="inline-flex bg-rule-soft p-[3px] rounded-[10px] gap-0.5">
         <Link
           href="/calendar?view=month"
-          className={`px-3 py-1.5 rounded-[7px] text-[12px] font-medium ${
+          className={`px-3 py-1.5 rounded-[7px] text-[13px] font-medium ${
             mode === "month"
               ? "bg-surface text-text shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
               : "text-text-dim"
@@ -223,7 +223,7 @@ function ModeBar({
         </Link>
         <Link
           href="/calendar?view=week"
-          className={`px-3 py-1.5 rounded-[7px] text-[12px] font-medium ${
+          className={`px-3 py-1.5 rounded-[7px] text-[13px] font-medium ${
             mode === "week"
               ? "bg-surface text-text shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
               : "text-text-dim"
@@ -343,7 +343,7 @@ function DayCell({
         {hidden > 0 && (
           <Link
             href={`/calendar?view=week&d=${ymd(cell.date)}`}
-            className="text-[10px] text-text-faint px-1 hover:text-blue hover:underline"
+            className="text-[11px] text-text-faint px-1 hover:text-blue hover:underline"
           >
             還有 {hidden} 個…
           </Link>
@@ -393,7 +393,7 @@ function WeekGrid({
             }`}
           >
             <div
-              className={`text-[11px] font-bold uppercase tracking-wider ${
+              className={`text-[12.5px] font-bold uppercase tracking-wider ${
                 d.isWeekend ? "text-orange/80" : "text-text-faint"
               }`}
             >
@@ -406,7 +406,7 @@ function WeekGrid({
             >
               {d.date.getDate()}
             </div>
-            <div className="text-[10px] text-text-faint tabular">
+            <div className="text-[11px] text-text-faint tabular">
               {d.tasks.length} 任務
               {d.events.length > 0 && (
                 <span className="text-green"> · 📅 {d.events.length}</span>
@@ -418,7 +418,7 @@ function WeekGrid({
               <EventChip key={e.googleEventId} event={e} />
             ))}
             {d.tasks.length === 0 && d.events.length === 0 ? (
-              <div className="text-[11px] text-text-faint p-2">無</div>
+              <div className="text-[12.5px] text-text-faint p-2">無</div>
             ) : (
               d.tasks.map((t) => <TaskChip key={t.id} task={t} large />)
             )}
@@ -449,14 +449,14 @@ function TaskChip({
     : {};
 
   return (
-    // 點任務卡 → 導到看板開該卡 drawer 做編輯（重用通知的 /?task= 深連開卡）
+    // 點任務卡 → 導到看板開該卡 drawer 做編輯；帶 from=cal 讓關閉時自動回行事曆
     <Link
-      href={`/?task=${task.id}`}
+      href={`/?task=${task.id}&from=cal`}
       className={`block px-1.5 py-0.5 rounded border truncate hover:opacity-80 hover:ring-1 hover:ring-current/30 ${
         !task.projectColor ? "bg-rule text-text-dim border-rule" : ""
       } ${dim ? "opacity-50" : ""} ${
         isDone ? "line-through opacity-70" : ""
-      } ${large ? "text-xs leading-snug py-1" : "text-[10.5px]"}`}
+      } ${large ? "text-xs leading-snug py-1" : "text-[12px]"}`}
       style={chipStyle}
       title={`${task.title}${task.projectName ? ` · ${task.projectName}` : ""}（點擊編輯）`}
     >
