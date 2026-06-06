@@ -918,6 +918,40 @@ export function TaskDrawer({
                 )}
               </div>
 
+              {/* 所屬專案的客戶資訊（唯讀，有填才顯示）— 在這張卡就看得到客戶是誰 */}
+              {(() => {
+                const sel = projects.find((p) => p.id === projectId);
+                if (!sel || !(sel.customerName || sel.brandName || sel.taxId))
+                  return null;
+                return (
+                  <div className="bg-surface-2 rounded-lg px-3.5 py-3">
+                    <div className="text-[11px] text-text-faint font-semibold uppercase tracking-wider mb-2">
+                      所屬專案客戶資訊
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
+                      {sel.customerName && (
+                        <span>
+                          <span className="text-text-faint">客戶　</span>
+                          <span className="font-semibold">{sel.customerName}</span>
+                        </span>
+                      )}
+                      {sel.brandName && (
+                        <span>
+                          <span className="text-text-faint">品牌　</span>
+                          <span className="font-semibold">{sel.brandName}</span>
+                        </span>
+                      )}
+                      {sel.taxId && (
+                        <span>
+                          <span className="text-text-faint">統編　</span>
+                          <span className="font-semibold tabular">{sel.taxId}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="text-xs text-text-faint pt-3 border-t border-rule">
                 💡 拖拉看板卡片直接改狀態，或在這裡編輯後按下方「儲存」。
               </div>

@@ -59,6 +59,10 @@ export interface ViewProject {
   teamId?: string | null;
   teamSlug?: string | null;
   teamName?: string | null;
+  // 客戶資訊（任務卡顯示所屬專案的客戶資料用）
+  customerName?: string | null;
+  taxId?: string | null;
+  brandName?: string | null;
 }
 
 export interface ViewTeam {

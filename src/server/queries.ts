@@ -138,6 +138,9 @@ export async function fetchProjects(): Promise<ViewProject[]> {
     teamId: p.team?.id ?? null,
     teamSlug: p.team?.slug ?? null,
     teamName: p.team?.name ?? null,
+    customerName: p.customerName ?? null,
+    taxId: p.taxId ?? null,
+    brandName: p.brandName ?? null,
   }));
 }
 
