@@ -35,6 +35,11 @@ jobs:
         # 只啟動 app；migrate 在 profile 內，不會被 up 帶起
         run: docker compose up -d app
 
+      - name: Reload reverse proxy
+        # orion-pm 重建後 IP 會變，reload 讓 threealien-nginx 重新解析 orion-pm:3000
+        # （nginx 容器不存在/改名時不讓部署失敗）
+        run: docker exec threealien-nginx nginx -s reload || true
+
       - name: Cleanup dangling images
         run: docker image prune -f
 

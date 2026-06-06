@@ -8,10 +8,13 @@ services:
     container_name: orion-pm
     restart: unless-stopped
     ports:
-      # 只綁 loopback，外部由 nginx 代理 → 不會直接從 8083 對外
+      # 只綁 loopback，純供 host 本機除錯用；對外流量走 threealien_network 由 nginx 代理
       - "127.0.0.1:8083:3000"
     env_file:
       - .env.production
+    networks:
+      # 加入既有反向代理(threealien-nginx)所在的網路，讓 nginx 可用容器名 orion-pm:3000 連到
+      - threealien_network
     healthcheck:
       # 用 node 內建 http 避免依賴 wget/curl；只要 server 有回 < 500 都算活著（不打 DB）
       test:
@@ -37,3 +40,8 @@ services:
     command: ["npx", "prisma", "migrate", "deploy"]
     restart: "no"
     profiles: ["migrate"]
+
+networks:
+  # 既有的反向代理網路（由 ThreeAlien_BackEnd 那組 compose 建立），這裡以 external 參照
+  threealien_network:
+    external: true
