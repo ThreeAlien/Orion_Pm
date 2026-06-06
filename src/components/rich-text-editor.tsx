@@ -31,6 +31,7 @@ export function RichTextEditor(props: {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  mentionUsers?: { id: string; name: string }[];
 }) {
   return <RichTextEditorInner {...props} />;
 }

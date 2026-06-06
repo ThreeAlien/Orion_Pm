@@ -76,6 +76,9 @@ model User {
   googleToken    GoogleToken?
   calendarEvents CalendarEvent[] @relation("UserCalendarEvents")
 
+  // 收到的通知（目前只有「被 @」）
+  notifications  Notification[]
+
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -215,6 +218,7 @@ model Task {
   comments     Comment[]
   activities   Activity[]
   checklist    ChecklistItem[]
+  notifications Notification[]
 
   // 卡片聯繫（跨團隊交流用，純參考 / peek，無 blocking 語意）
   links        TaskLink[]       @relation("TaskLinkFrom")
@@ -380,4 +384,28 @@ model Image {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// 通知（目前只有「被 @ 提及」）。被 @ 的人收到一筆，未讀會在鈴鐺顯示數字、
+// 對應卡片在看板標色；點進卡片 / 看通知就標已讀。
+model Notification {
+  id          String   @id @default(cuid())
+
+  recipientId String
+  recipient   User     @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  type        String   @default("MENTION")
+  /// 觸發者名字（denormalized，留言當下的名字；觸發者改名不影響舊通知）
+  actorName   String?
+  /// 來源任務（點通知 / 卡片標色用）
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// 來源留言（可選，描述提及為 null）
+  commentId   String?
+
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([recipientId, read])
+  @@index([recipientId, createdAt])
 }

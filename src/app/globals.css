@@ -135,3 +135,21 @@ body {
   width: 160px;
   max-width: 48vw;
 }
+
+/* @ 提及 chip（編輯器 + 留言顯示共用） */
+.orion-quill .mention,
+.orion-richtext .mention {
+  background: color-mix(in srgb, var(--blue, #2f6bff) 12%, transparent);
+  color: var(--blue, #2f6bff);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* 富文本貼圖：限制最大寬度避免撐爆容器 */
+.orion-richtext img,
+.orion-quill .ql-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}

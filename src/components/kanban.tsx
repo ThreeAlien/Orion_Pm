@@ -15,12 +15,14 @@ export function KanbanDashboard({
   users,
   stats,
   currentUserId,
+  unreadMentionTaskIds,
 }: {
   tasks: ViewTask[];
   projects: ViewProject[];
   users: ViewUser[];
   stats: DashboardStats;
   currentUserId?: string;
+  unreadMentionTaskIds?: string[];
 }) {
   return (
     <div className="bg-surface rounded-2xl p-6 shadow-soft flex-1 flex flex-col min-h-0">
@@ -30,6 +32,7 @@ export function KanbanDashboard({
         projects={projects}
         users={users}
         currentUserId={currentUserId}
+        unreadMentionTaskIds={unreadMentionTaskIds}
         showFilterRow
       />
     </div>

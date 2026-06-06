@@ -5,7 +5,24 @@
 // Quill 在 SSR 期吃 document 爆掉。
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactQuill from "react-quill-new";
+import { Mention, MentionBlot } from "quill-mention";
 import "react-quill-new/dist/quill.snow.css";
+import "quill-mention/dist/quill.mention.css";
+
+export type MentionUser = { id: string; name: string };
+
+// 把 quill-mention 的 blot / module 註冊到 react-quill-new 用的同一個 Quill。
+// 只跑一次（這支只在 client 載入）。
+let mentionRegistered = false;
+function ensureMentionRegistered() {
+  if (mentionRegistered) return;
+  mentionRegistered = true;
+  // react-quill-new 內部就是用 'quill' 這顆，ReactQuill.Quill 即同一個 class
+  (ReactQuill.Quill as typeof import("quill").default).register(
+    { "blots/mention": MentionBlot, "modules/mention": Mention },
+    true,
+  );
+}
 
 const TOOLBAR = [
   [{ header: [1, 2, false] }],
@@ -75,12 +92,19 @@ export function RichTextEditorInner({
   value,
   onChange,
   placeholder,
+  mentionUsers,
 }: {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  mentionUsers?: MentionUser[];
 }) {
   const quillRef = useRef<ReactQuill>(null);
+  const mentionEnabled = Array.isArray(mentionUsers);
+  // 用 ref 餵 source，讓 modules 物件保持穩定（不隨 users 重建、避免 Quill 重新初始化）
+  const usersRef = useRef<MentionUser[]>(mentionUsers ?? []);
+  usersRef.current = mentionUsers ?? [];
+  if (mentionEnabled) ensureMentionRegistered();
 
   // 壓 webp → 上傳 → 在游標處插入 <img src=短網址>
   const insertImage = useCallback(async (file: File) => {
@@ -110,10 +134,43 @@ export function RichTextEditorInner({
     input.click();
   }, [insertImage]);
 
-  const modules = useMemo(
-    () => ({ toolbar: { container: TOOLBAR, handlers: { image: imageHandler } } }),
-    [imageHandler],
-  );
+  const modules = useMemo(() => {
+    const base = {
+      toolbar: { container: TOOLBAR, handlers: { image: imageHandler } },
+    };
+    if (!mentionEnabled) return base;
+    return {
+      ...base,
+      mention: {
+        mentionDenotationChars: ["@"],
+        // 預設只允許英數底線 → 會擋掉中文名字；放寬成任何語言字母/數字（含 CJK）
+        allowedChars: /^[\p{L}\p{N}_]*$/u,
+        dataAttributes: ["id", "value"],
+        spaceAfterInsert: true,
+        // 夾在 overflow 容器（drawer / dialog）內，用 fixed 定位避免被裁掉
+        positioningStrategy: "fixed",
+        renderItem: (item: { value: string }) => {
+          const el = document.createElement("div");
+          el.textContent = item.value;
+          return el;
+        },
+        source: (
+          searchTerm: string,
+          renderList: (
+            matches: { id: string; value: string }[],
+            searchTerm: string,
+          ) => void,
+        ) => {
+          const q = searchTerm.trim().toLowerCase();
+          const matches = usersRef.current
+            .filter((u) => !q || u.name.toLowerCase().includes(q))
+            .slice(0, 8)
+            .map((u) => ({ id: u.id, value: u.name }));
+          renderList(matches, searchTerm);
+        },
+      },
+    };
+  }, [imageHandler, mentionEnabled]);
 
   // 貼上 / 拖放圖片 → 攔截 Quill 預設的 base64 內嵌，改走壓縮上傳
   useEffect(() => {

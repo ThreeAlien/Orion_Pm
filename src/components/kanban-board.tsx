@@ -1,8 +1,15 @@
 // 看板（DnD 拖拉跨 column）+ Task Drawer (含編輯 form)。Phase 1.4b/c。
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useState,
+  useEffect,
+  useTransition,
+  useMemo,
+  useContext,
+  createContext,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -41,6 +48,7 @@ import {
   addTaskLink,
   removeTaskLink,
   getTaskPeek,
+  markTaskNotificationsRead,
 } from "@/server/actions";
 import type { ViewTaskLink, ViewTaskPeek } from "@/server/queries";
 import { RichTextEditor, isRichTextEmpty } from "./rich-text-editor";
@@ -85,22 +93,32 @@ const priorityOptions: { value: TaskPriority; label: string }[] = [
   { value: "HIGH", label: "🔥 高" },
 ];
 
+// 被 @ 且未讀的 taskId 集合，給卡片標色用（避免穿三層 props）
+const MentionedTasksContext = createContext<Set<string>>(new Set());
+
 export function KanbanBoard({
   tasks: initialTasks,
   projects,
   users,
   currentUserId,
   showFilterRow = false,
+  unreadMentionTaskIds,
 }: {
   tasks: ViewTask[];
   projects: ViewProject[];
   users?: ViewUser[];
   currentUserId?: string;
   showFilterRow?: boolean;
+  unreadMentionTaskIds?: string[];
 }) {
   const [tasks, setTasks] = useState(initialTasks);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const mentionedSet = useMemo(
+    () => new Set(unreadMentionTaskIds ?? []),
+    [unreadMentionTaskIds],
+  );
+  const searchParams = useSearchParams();
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     new Set()
   );
@@ -123,6 +141,22 @@ export function KanbanBoard({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [selectedId]);
+
+  // 從通知點進來：/?task=<id> 自動開該卡 drawer，開完把 query 清掉避免重整又彈開
+  useEffect(() => {
+    const tid = searchParams.get("task");
+    if (tid) {
+      setSelectedId(tid);
+      router.replace("/", { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  // 開到「被 @ 未讀」的卡 → 標已讀（鈴鐺數字 / 卡片標色一起消）
+  useEffect(() => {
+    if (selectedId && mentionedSet.has(selectedId)) {
+      markTaskNotificationsRead(selectedId).then(() => router.refresh());
+    }
+  }, [selectedId, mentionedSet, router]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -186,7 +220,7 @@ export function KanbanBoard({
   }
 
   return (
-    <>
+    <MentionedTasksContext.Provider value={mentionedSet}>
       {showFilterRow && (
         <FilterRow
           projects={projects}
@@ -243,7 +277,7 @@ export function KanbanBoard({
           onClose={() => setSelectedId(null)}
         />
       </DndContext>
-    </>
+    </MentionedTasksContext.Provider>
   );
 }
 
@@ -479,12 +513,14 @@ function TaskCardInner({
   const isDone = task.status === "DONE";
   const router = useRouter();
   const [, startArchive] = useTransition();
+  // 被 @ 且未讀：卡片加底色 + 左側色條，一眼看出有人提及你
+  const mentioned = useContext(MentionedTasksContext).has(task.id) && !isOverlay;
 
   return (
     <div
-      className={`group relative bg-surface rounded-[10px] p-3 cursor-pointer transition-all ${
+      className={`group relative rounded-[10px] p-3 cursor-pointer transition-all ${
         isOverlay ? "shadow-2xl" : "hover:-translate-y-px"
-      }`}
+      } ${mentioned ? "ring-2 ring-orange bg-orange/[.06]" : "bg-surface"}`}
       style={{
         boxShadow: isOverlay
           ? "0 12px 32px rgba(0,0,0,0.18)"
@@ -535,6 +571,11 @@ function TaskCardInner({
       )}
 
       <div className="flex gap-1 mb-2 flex-wrap pr-6">
+        {mentioned && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[11px] font-semibold bg-orange/[.15] text-orange">
+            @ 提及你
+          </span>
+        )}
         {project && <ProjectTag project={project} />}
         {task.priority === "HIGH" && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[11px] font-semibold bg-red/[.12] text-red">
@@ -815,6 +856,7 @@ export function TaskDrawer({
                 value={description}
                 onChange={setDescription}
                 placeholder="描述（選填）"
+                mentionUsers={users}
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -940,6 +982,7 @@ export function TaskDrawer({
                                   value={editBody}
                                   onChange={setEditBody}
                                   placeholder="編輯留言…"
+                                  mentionUsers={users}
                                 />
                                 <div className="flex items-center gap-2">
                                   <button
@@ -991,6 +1034,7 @@ export function TaskDrawer({
                     value={commentBody}
                     onChange={setCommentBody}
                     placeholder="留言…"
+                    mentionUsers={users}
                   />
                   <button
                     onClick={handlePostComment}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { NewTaskDialog } from "./new-task-dialog";
+import { NotificationBell } from "./notification-bell";
 import type { ViewProject, ViewUser, ViewTeam } from "@/lib/data";
 
 export function Topbar({
@@ -42,6 +43,7 @@ export function Topbar({
           ⌘ K
         </span>
         <div className="hidden md:block flex-1" />
+        <NotificationBell />
         <button
           onClick={() => setDialogOpen(true)}
           className="bg-blue text-white px-2.5 sm:px-3.5 py-2 rounded-[10px] font-semibold text-[13px] cursor-pointer hover:brightness-95 whitespace-nowrap flex-shrink-0"

@@ -113,6 +113,41 @@ async function resolveUserName(id: string | null): Promise<string | null> {
   return u?.name ?? null;
 }
 
+// 從富文本 HTML 抽出被 @ 的 userId（quill-mention 產生 <span class="mention" data-id="...">）
+function parseMentionUserIds(html: string | null | undefined): string[] {
+  if (!html) return [];
+  const ids = new Set<string>();
+  const re = /data-id="([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) ids.add(m[1]);
+  return [...ids];
+}
+
+// 對 userIds 中真實存在的使用者建立「被 @」通知（呼叫端先排除自己 / 舊內容已提及的人）
+async function createMentionNotifications(opts: {
+  userIds: string[];
+  actorName: string | null;
+  taskId: string;
+  commentId?: string | null;
+}) {
+  const recipients = [...new Set(opts.userIds)].filter(Boolean);
+  if (recipients.length === 0) return;
+  const valid = await db.user.findMany({
+    where: { id: { in: recipients } },
+    select: { id: true },
+  });
+  if (valid.length === 0) return;
+  await db.notification.createMany({
+    data: valid.map((u) => ({
+      recipientId: u.id,
+      type: "MENTION",
+      actorName: opts.actorName,
+      taskId: opts.taskId,
+      commentId: opts.commentId ?? null,
+    })),
+  });
+}
+
 const TASK_STATUSES = [
   "TODO",
   "DISCUSSING",
@@ -189,6 +224,13 @@ export async function createTask(
   });
   await logActivity(task.id, actorId, "CREATED", null, null);
 
+  // 描述裡被 @ 的人收到通知（排除自己）
+  await createMentionNotifications({
+    userIds: parseMentionUserIds(data.description).filter((id) => id !== actorId),
+    actorName: await resolveUserName(actorId),
+    taskId: task.id,
+  });
+
   // 重新整理 dashboard / tasks / projects 三頁
   revalidatePath("/");
   revalidatePath("/tasks");
@@ -250,6 +292,7 @@ export async function updateTask(raw: unknown) {
       assigneeId: true,
       startDate: true,
       dueDate: true,
+      description: true,
       assignee: { select: { name: true } },
     },
   });
@@ -293,6 +336,18 @@ export async function updateTask(raw: unknown) {
     const newDue = data.dueDate || null;
     if (oldDue !== newDue) {
       await logActivity(data.id, actorId, "DUE_DATE", oldDue, newDue);
+    }
+    // 描述裡「新增」的 @（舊描述沒有、自己除外）才發通知，避免每次編輯都重發
+    const oldMentions = new Set(parseMentionUserIds(old.description));
+    const addedMentions = parseMentionUserIds(data.description).filter(
+      (id) => !oldMentions.has(id) && id !== actorId,
+    );
+    if (addedMentions.length > 0) {
+      await createMentionNotifications({
+        userIds: addedMentions,
+        actorName: await resolveUserName(actorId),
+        taskId: data.id,
+      });
     }
   }
 
@@ -567,8 +622,16 @@ export async function addComment(raw: unknown): Promise<CommentResult> {
   const uid = await currentUserId();
   if (!uid) return { ok: false, error: "未登入" };
 
+  const me = await db.user.findUnique({ where: { id: uid }, select: { name: true } });
   const comment = await db.comment.create({
     data: { taskId: parsed.data.taskId, body: parsed.data.body, authorId: uid },
+  });
+  // 被 @ 的人收到通知（排除自己）
+  await createMentionNotifications({
+    userIds: parseMentionUserIds(parsed.data.body).filter((id) => id !== uid),
+    actorName: me?.name ?? null,
+    taskId: parsed.data.taskId,
+    commentId: comment.id,
   });
   revalidatePath("/");
   revalidatePath("/tasks");
@@ -754,4 +817,77 @@ export async function getLinkableTasks(taskId: string) {
 
 export async function getTaskPeek(id: string) {
   return fetchTaskPeek(id);
+}
+
+// ==================== 通知（被 @ 提及）====================
+
+export type ViewNotification = {
+  id: string;
+  actorName: string | null;
+  taskId: string | null;
+  taskTitle: string | null;
+  read: boolean;
+  createdAtIso: string;
+};
+
+// 我的通知（最近 30 筆，新到舊）
+export async function fetchMyNotifications(): Promise<ViewNotification[]> {
+  const uid = await currentUserId();
+  if (!uid) return [];
+  const rows = await db.notification.findMany({
+    where: { recipientId: uid },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: {
+      id: true,
+      actorName: true,
+      taskId: true,
+      read: true,
+      createdAt: true,
+      task: { select: { title: true } },
+    },
+  });
+  return rows.map((n) => ({
+    id: n.id,
+    actorName: n.actorName,
+    taskId: n.taskId,
+    taskTitle: n.task?.title ?? null,
+    read: n.read,
+    createdAtIso: n.createdAt.toISOString(),
+  }));
+}
+
+// 看板卡片標色用：我還沒讀的「被 @」通知對應的 taskId 清單
+export async function fetchUnreadMentionTaskIds(): Promise<string[]> {
+  const uid = await currentUserId();
+  if (!uid) return [];
+  const rows = await db.notification.findMany({
+    where: { recipientId: uid, read: false, type: "MENTION", taskId: { not: null } },
+    select: { taskId: true },
+    distinct: ["taskId"],
+  });
+  return rows.map((r) => r.taskId).filter((id): id is string => !!id);
+}
+
+export async function markAllNotificationsRead() {
+  const uid = await currentUserId();
+  if (!uid) return { ok: false as const };
+  await db.notification.updateMany({
+    where: { recipientId: uid, read: false },
+    data: { read: true },
+  });
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
+// 開某張卡時，把該卡的未讀通知標已讀（卡片標色消失）
+export async function markTaskNotificationsRead(taskId: string) {
+  const uid = await currentUserId();
+  if (!uid) return { ok: false as const };
+  await db.notification.updateMany({
+    where: { recipientId: uid, taskId, read: false },
+    data: { read: true },
+  });
+  revalidatePath("/", "layout");
+  return { ok: true as const };
 }
