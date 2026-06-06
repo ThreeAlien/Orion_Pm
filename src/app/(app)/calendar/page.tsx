@@ -31,6 +31,28 @@ function deriveCalProjects(
   );
 }
 
+// 從任務集合推導出現過的負責人（給行事曆負責人篩選用）
+function deriveCalPeople(tasks: { assignees: { id: string; name: string }[] }[]) {
+  const map = new Map<string, { id: string; name: string }>();
+  for (const t of tasks) {
+    for (const a of t.assignees) if (!map.has(a.id)) map.set(a.id, a);
+  }
+  return [...map.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, "zh-Hant")
+  );
+}
+
+// 套用專案 + 負責人篩選
+function applyCalFilters<
+  T extends { projectId: string | null; assignees: { id: string }[] }
+>(tasks: T[], project?: string, assignee?: string): T[] {
+  return tasks.filter(
+    (t) =>
+      (!project || t.projectId === project) &&
+      (!assignee || t.assignees.some((a) => a.id === assignee))
+  );
+}
+
 // 讀登入者的 Google 事件（純 proxy）+ 回傳狀態（未連結 / 授權過期 → 前台提示重新登入）
 async function loadGoogleEvents(
   userId: string | undefined,
@@ -68,11 +90,13 @@ export default async function CalendarPage({
     m?: string;
     d?: string;
     project?: string;
+    assignee?: string;
   }>;
 }) {
   const params = await searchParams;
   const view = params.view === "week" ? "week" : "month";
   const activeProject = params.project;
+  const activeAssignee = params.assignee;
   const scope = await getTeamScope();
   const session = await auth();
   const uid = session?.user?.id;
@@ -96,9 +120,8 @@ export default async function CalendarPage({
       (t) => inTeamScope(t.teamSlug, scope)
     );
     const filterProjects = deriveCalProjects(scoped);
-    const tasks = activeProject
-      ? scoped.filter((t) => t.projectId === activeProject)
-      : scoped;
+    const filterPeople = deriveCalPeople(scoped);
+    const tasks = applyCalFilters(scoped, activeProject, activeAssignee);
     const { events, status } = await loadGoogleEvents(uid, weekStart, weekEnd);
     return (
       <CalendarView
@@ -111,6 +134,8 @@ export default async function CalendarPage({
         googleStatus={status}
         filterProjects={filterProjects}
         activeProject={activeProject}
+        filterPeople={filterPeople}
+        activeAssignee={activeAssignee}
       />
     );
   }
@@ -134,9 +159,8 @@ export default async function CalendarPage({
     inTeamScope(t.teamSlug, scope)
   );
   const filterProjects = deriveCalProjects(scoped);
-  const tasks = activeProject
-    ? scoped.filter((t) => t.projectId === activeProject)
-    : scoped;
+  const filterPeople = deriveCalPeople(scoped);
+  const tasks = applyCalFilters(scoped, activeProject, activeAssignee);
   // 涵蓋月曆網格前後補格（上/下個月露出的日子）
   const gStart = new Date(year, month, -6);
   const gEnd = new Date(year, month + 1, 8);
@@ -151,6 +175,8 @@ export default async function CalendarPage({
       googleStatus={status}
       filterProjects={filterProjects}
       activeProject={activeProject}
+      filterPeople={filterPeople}
+      activeAssignee={activeAssignee}
     />
   );
 }

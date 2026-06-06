@@ -49,6 +49,8 @@ export function CalendarView({
   googleStatus,
   filterProjects = [],
   activeProject,
+  filterPeople = [],
+  activeAssignee,
 }: {
   mode: Mode;
   year: number;
@@ -59,6 +61,8 @@ export function CalendarView({
   googleStatus: GoogleCalStatus;
   filterProjects?: CalFilterProject[];
   activeProject?: string;
+  filterPeople?: { id: string; name: string }[];
+  activeAssignee?: string;
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -71,7 +75,12 @@ export function CalendarView({
         eventsCount={events.length}
         googleStatus={googleStatus}
       />
-      <CalendarProjectFilter projects={filterProjects} active={activeProject} />
+      <CalendarProjectFilter
+        projects={filterProjects}
+        active={activeProject}
+        people={filterPeople}
+        activeAssignee={activeAssignee}
+      />
       <ModeBar mode={mode} year={year} month={month} weekStart={weekStart} />
 
       {mode === "month" ? (
@@ -332,9 +341,12 @@ function DayCell({
           <TaskChip key={t.id} task={t} dim={!cell.isCurrentMonth} />
         ))}
         {hidden > 0 && (
-          <div className="text-[10px] text-text-faint px-1">
+          <Link
+            href={`/calendar?view=week&d=${ymd(cell.date)}`}
+            className="text-[10px] text-text-faint px-1 hover:text-blue hover:underline"
+          >
             還有 {hidden} 個…
-          </div>
+          </Link>
         )}
       </div>
     </div>
@@ -437,18 +449,20 @@ function TaskChip({
     : {};
 
   return (
-    <div
-      className={`px-1.5 py-0.5 rounded border truncate hover:opacity-80 ${
+    // 點任務卡 → 導到看板開該卡 drawer 做編輯（重用通知的 /?task= 深連開卡）
+    <Link
+      href={`/?task=${task.id}`}
+      className={`block px-1.5 py-0.5 rounded border truncate hover:opacity-80 hover:ring-1 hover:ring-current/30 ${
         !task.projectColor ? "bg-rule text-text-dim border-rule" : ""
       } ${dim ? "opacity-50" : ""} ${
         isDone ? "line-through opacity-70" : ""
       } ${large ? "text-xs leading-snug py-1" : "text-[10.5px]"}`}
       style={chipStyle}
-      title={`${task.title}${task.projectName ? ` · ${task.projectName}` : ""}`}
+      title={`${task.title}${task.projectName ? ` · ${task.projectName}` : ""}（點擊編輯）`}
     >
       <span className="mr-1">{statusEmoji[task.status]}</span>
       {task.title}
-    </div>
+    </Link>
   );
 }
 

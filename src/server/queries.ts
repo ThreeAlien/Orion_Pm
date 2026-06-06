@@ -278,6 +278,7 @@ export interface CalendarTask {
   projectColor: ProjectColor | null;
   projectName: string | null;
   teamSlug: string | null;
+  assignees: { id: string; name: string }[];
   dueDate: Date;
 }
 
@@ -294,6 +295,7 @@ export async function fetchCalendarRangeTasks(
     include: {
       project: { select: { name: true, color: true, team: { select: { slug: true } } } },
       team: { select: { slug: true } },
+      assignees: { include: { user: { select: { id: true, name: true } } } },
     },
   });
   return rows
@@ -308,6 +310,7 @@ export async function fetchCalendarRangeTasks(
       projectName: r.project?.name ?? null,
       // 專案的團隊優先，沒專案才用直屬 team
       teamSlug: r.project?.team?.slug ?? r.team?.slug ?? null,
+      assignees: r.assignees.map((a) => ({ id: a.user.id, name: a.user.name })),
       dueDate: r.dueDate!,
     }));
 }

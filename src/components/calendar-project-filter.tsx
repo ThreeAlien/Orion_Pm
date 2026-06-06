@@ -15,39 +15,61 @@ export type CalFilterProject = {
 export function CalendarProjectFilter({
   projects,
   active,
+  people = [],
+  activeAssignee,
 }: {
   projects: CalFilterProject[];
   active?: string;
+  people?: { id: string; name: string }[];
+  activeAssignee?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  if (projects.length === 0) return null;
+  if (projects.length === 0 && people.length === 0) return null;
 
-  function go(projectId: string | null) {
+  function setParam(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
-    if (projectId) params.set("project", projectId);
-    else params.delete("project");
+    if (value) params.set(key, value);
+    else params.delete(key);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap mt-3">
-      <Chip active={!active} onClick={() => go(null)}>
-        全部專案
-      </Chip>
-      {projects.map((p) => (
-        <Chip
-          key={p.id}
-          active={active === p.id}
-          dotColor={p.color}
-          onClick={() => go(p.id)}
+      {projects.length > 0 && (
+        <>
+          <Chip active={!active} onClick={() => setParam("project", null)}>
+            全部專案
+          </Chip>
+          {projects.map((p) => (
+            <Chip
+              key={p.id}
+              active={active === p.id}
+              dotColor={p.color}
+              onClick={() => setParam("project", p.id)}
+            >
+              {p.name}
+            </Chip>
+          ))}
+        </>
+      )}
+      {people.length > 0 && (
+        <select
+          value={activeAssignee ?? ""}
+          onChange={(e) => setParam("assignee", e.target.value || null)}
+          className="ml-1 bg-rule-soft border-0 rounded-full px-3 py-[5px] text-xs text-text-dim font-medium focus:outline-none cursor-pointer"
         >
-          {p.name}
-        </Chip>
-      ))}
+          <option value="">所有負責人</option>
+          {people.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
