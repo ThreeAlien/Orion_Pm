@@ -5,6 +5,10 @@ import type { TaskStatus, CalEventItem, GoogleCalStatus } from "@/lib/data";
 import { resolveProjectColor } from "@/lib/data";
 import { ViewToggle } from "./view-toggle";
 import { NewEventButton, EventChip } from "./calendar-events";
+import {
+  CalendarProjectFilter,
+  type CalFilterProject,
+} from "./calendar-project-filter";
 
 // Google 事件依「開始日」分組（key = 本地日期）
 function eventsByDate(events: CalEventItem[]): Map<string, CalEventItem[]> {
@@ -43,6 +47,8 @@ export function CalendarView({
   tasks,
   events,
   googleStatus,
+  filterProjects = [],
+  activeProject,
 }: {
   mode: Mode;
   year: number;
@@ -51,6 +57,8 @@ export function CalendarView({
   tasks: CalendarTask[];
   events: CalEventItem[];
   googleStatus: GoogleCalStatus;
+  filterProjects?: CalFilterProject[];
+  activeProject?: string;
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -63,6 +71,7 @@ export function CalendarView({
         eventsCount={events.length}
         googleStatus={googleStatus}
       />
+      <CalendarProjectFilter projects={filterProjects} active={activeProject} />
       <ModeBar mode={mode} year={year} month={month} weekStart={weekStart} />
 
       {mode === "month" ? (

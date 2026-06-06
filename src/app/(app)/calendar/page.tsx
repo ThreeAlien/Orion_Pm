@@ -3,7 +3,33 @@ import { fetchCalendarTasks, fetchCalendarRangeTasks } from "@/server/queries";
 import { getTeamScope, inTeamScope } from "@/lib/team-scope";
 import { listGoogleEvents } from "@/server/google-calendar";
 import { auth } from "@/auth";
-import type { CalEventItem, GoogleCalStatus } from "@/lib/data";
+import type { CalEventItem, GoogleCalStatus, ProjectColor } from "@/lib/data";
+
+// 從任務集合推導出現過的專案（給行事曆篩選 chip 用），去重、依名稱排序
+function deriveCalProjects(
+  tasks: {
+    projectId: string | null;
+    projectName: string | null;
+    projectColor: ProjectColor | null;
+  }[]
+) {
+  const map = new Map<
+    string,
+    { id: string; name: string; color: ProjectColor | null }
+  >();
+  for (const t of tasks) {
+    if (t.projectId && !map.has(t.projectId)) {
+      map.set(t.projectId, {
+        id: t.projectId,
+        name: t.projectName ?? "（未命名）",
+        color: t.projectColor,
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, "zh-Hant")
+  );
+}
 
 // 讀登入者的 Google 事件（純 proxy）+ 回傳狀態（未連結 / 授權過期 → 前台提示重新登入）
 async function loadGoogleEvents(
@@ -37,10 +63,16 @@ async function loadGoogleEvents(
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; m?: string; d?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    m?: string;
+    d?: string;
+    project?: string;
+  }>;
 }) {
   const params = await searchParams;
   const view = params.view === "week" ? "week" : "month";
+  const activeProject = params.project;
   const scope = await getTeamScope();
   const session = await auth();
   const uid = session?.user?.id;
@@ -60,9 +92,13 @@ export default async function CalendarPage({
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
     const weekEnd = new Date(weekStart.getTime() + 7 * 86400000);
-    const tasks = (await fetchCalendarRangeTasks(weekStart, weekEnd)).filter(
+    const scoped = (await fetchCalendarRangeTasks(weekStart, weekEnd)).filter(
       (t) => inTeamScope(t.teamSlug, scope)
     );
+    const filterProjects = deriveCalProjects(scoped);
+    const tasks = activeProject
+      ? scoped.filter((t) => t.projectId === activeProject)
+      : scoped;
     const { events, status } = await loadGoogleEvents(uid, weekStart, weekEnd);
     return (
       <CalendarView
@@ -73,6 +109,8 @@ export default async function CalendarPage({
         tasks={tasks}
         events={events}
         googleStatus={status}
+        filterProjects={filterProjects}
+        activeProject={activeProject}
       />
     );
   }
@@ -92,9 +130,13 @@ export default async function CalendarPage({
     }
   }
 
-  const tasks = (await fetchCalendarTasks(year, month)).filter((t) =>
+  const scoped = (await fetchCalendarTasks(year, month)).filter((t) =>
     inTeamScope(t.teamSlug, scope)
   );
+  const filterProjects = deriveCalProjects(scoped);
+  const tasks = activeProject
+    ? scoped.filter((t) => t.projectId === activeProject)
+    : scoped;
   // 涵蓋月曆網格前後補格（上/下個月露出的日子）
   const gStart = new Date(year, month, -6);
   const gEnd = new Date(year, month + 1, 8);
@@ -107,6 +149,8 @@ export default async function CalendarPage({
       tasks={tasks}
       events={events}
       googleStatus={status}
+      filterProjects={filterProjects}
+      activeProject={activeProject}
     />
   );
 }
