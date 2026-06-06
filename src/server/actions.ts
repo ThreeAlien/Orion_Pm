@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { TEAM_COOKIE } from "@/lib/team-scope";
+import { TEAM_COOKIE, getTeamScope, inTeamScope } from "@/lib/team-scope";
 import { STATUS_LABELS, PRIORITY_LABELS } from "@/lib/labels";
 import {
   fetchTaskTimeline,
@@ -929,4 +929,40 @@ export async function markTaskNotificationsRead(taskId: string) {
   });
   revalidatePath("/", "layout");
   return { ok: true as const };
+}
+
+// ==================== 檔案總管（跨專案檔案連結彙整）====================
+
+export type FileHubProject = {
+  id: string;
+  name: string;
+  color: string;
+  links: { label: string; url: string }[];
+};
+
+// 撈目前團隊範圍內、有填檔案統籌表的專案 + 其連結，給頂部「檔案總管」dialog 用
+export async function getProjectFileHub(): Promise<FileHubProject[]> {
+  const scope = await getTeamScope();
+  const rows = await db.project.findMany({
+    where: { archived: false },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      fileLinks: true,
+      team: { select: { slug: true } },
+    },
+  });
+  return rows
+    .filter((p) => inTeamScope(p.team?.slug ?? null, scope))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      color: p.color,
+      links: Array.isArray(p.fileLinks)
+        ? (p.fileLinks as { label: string; url: string }[])
+        : [],
+    }))
+    .filter((p) => p.links.length > 0);
 }

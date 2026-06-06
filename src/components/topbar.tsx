@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { NewTaskDialog } from "./new-task-dialog";
 import { NotificationBell } from "./notification-bell";
+import { FileHubButton } from "./file-hub-button";
 import type { ViewProject, ViewUser, ViewTeam } from "@/lib/data";
 
 export function Topbar({
@@ -43,6 +44,7 @@ export function Topbar({
           ⌘ K
         </span>
         <div className="hidden md:block flex-1" />
+        <FileHubButton />
         <NotificationBell />
         <button
           onClick={() => setDialogOpen(true)}
