@@ -471,12 +471,32 @@ function Toolbar({
       )}
 
       <div className="flex-1" />
-      <Legend />
+      <Legend mode={mode} />
     </div>
   );
 }
 
-function Legend() {
+function Legend({ mode }: { mode: Mode }) {
+  // 專案級 bar 已改沉穩單色（進度靠填充），不再用狀態色 → 圖例簡化避免誤導；
+  // 任務級 bar 才依狀態上色，顯示完整狀態圖例。
+  if (mode === "projects") {
+    return (
+      <div className="flex gap-x-3 gap-y-1 items-center text-xs text-text-dim flex-wrap">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="w-4 h-2 rounded-sm bg-blue/30 relative overflow-hidden">
+            <span className="absolute inset-y-0 left-0 w-1/2 bg-blue/60" />
+          </span>
+          進度
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="w-4 h-2 rounded-sm bg-text-faint/40" /> 已完成
+        </span>
+        <span className="inline-flex items-center gap-1.5 pl-2 border-l border-rule">
+          <span className="w-[2px] h-3 bg-blue" /> 今日
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="flex gap-x-3 gap-y-1 items-center text-xs text-text-dim flex-wrap">
       <span className="inline-flex items-center gap-1.5">
@@ -557,21 +577,13 @@ function ProjectRow({
     barWidth = pct(project.endDate) - barLeft;
   }
 
+  // 專案級不用「完成率紅綠燈」上色（0% 就紅一片、刺眼又不直覺）。
+  // 統一用沉穩單色容器，進度純靠填充長度表示；完成的轉灰。專案身份靠左側圓點。
   const barClass = completed
-    ? "bg-text-faint/20 border border-text-faint/50"
-    : project.completionRate >= 70
-    ? "bg-green/20 border border-green/40"
-    : project.completionRate >= 40
-    ? "bg-orange/25 border border-orange/40"
-    : "bg-red/20 border border-red/40";
+    ? "bg-text-faint/15 border border-text-faint/40"
+    : "bg-blue/[.10] border border-blue/30";
 
-  const fillClass = completed
-    ? "bg-text-faint/80"
-    : project.completionRate >= 70
-    ? "bg-green"
-    : project.completionRate >= 40
-    ? "bg-orange"
-    : "bg-red";
+  const fillClass = completed ? "bg-text-faint/70" : "bg-blue/60";
 
   return (
     <>
