@@ -172,18 +172,17 @@ export function RichTextEditorInner({
     };
   }, [imageHandler, mentionEnabled]);
 
-  // 貼上 / 拖放圖片 → 攔截 Quill 預設的 base64 內嵌，改走壓縮上傳
+  // 貼上 / 拖放圖片 → 攔截 Quill 預設的 base64 內嵌，改走壓縮上傳。
+  // listener 一律掛在 document 的 capture 階段（一定比 Quill 在 root 上的 clipboard
+  // listener 早跑），editor 的 root 在「事件當下」才解析（用 .editor 欄位不觸發
+  // getEditor 未實例化警告），避免 mount 時 editor 還沒 instantiate 導致 listener 沒掛。
   useEffect(() => {
-    const editor = quillRef.current?.getEditor();
-    if (!editor) return;
-    const root = editor.root;
+    const getRoot = (): HTMLElement | null =>
+      quillRef.current?.editor?.root ?? null;
 
-    // 掛在 document 的 capture 階段：一定比 Quill 在 root（事件 target）上的 clipboard
-    // listener 早跑。確認事件落在「自己這個編輯器」(root.contains) 才攔，preventDefault
-    // + stopPropagation 直接擋掉 Quill 把圖塞成 base64 的預設行為 → 只留壓縮上傳那張，
-    // 避免一次貼上變兩張（壓縮那張 + base64 那張）。
     const onPaste = (e: ClipboardEvent) => {
-      if (!e.target || !root.contains(e.target as Node)) return;
+      const root = getRoot();
+      if (!root || !e.target || !root.contains(e.target as Node)) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const it of Array.from(items)) {
@@ -199,7 +198,8 @@ export function RichTextEditorInner({
       }
     };
     const onDrop = (e: DragEvent) => {
-      if (!e.target || !root.contains(e.target as Node)) return;
+      const root = getRoot();
+      if (!root || !e.target || !root.contains(e.target as Node)) return;
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
       const imgFile = Array.from(files).find((f) => f.type.startsWith("image/"));

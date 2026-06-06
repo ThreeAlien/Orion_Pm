@@ -2,7 +2,7 @@
 
 // 頂部「檔案總管」：彙整各專案的檔案統籌表連結，用專案 chip 篩選，點 ↗ 直接開。
 // 放頂部列 → 任何頁都能邊做事邊開檔案。
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getProjectFileHub, type FileHubProject } from "@/server/actions";
 import { resolveProjectColor } from "@/lib/data";
 
@@ -19,6 +19,16 @@ export function FileHubButton() {
       .then(setData)
       .catch(() => setData([]));
   }
+
+  // ESC 關閉
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [open]);
 
   const projects = data ?? [];
   const shown = sel ? projects.filter((p) => p.id === sel) : projects;
