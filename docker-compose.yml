@@ -1,4 +1,24 @@
 services:
+  # 自架 PostgreSQL（2026-06-06 從 Neon 搬回 Linode 本機）。
+  # 帳密 / DB 名走 .env.production 的 POSTGRES_USER/PASSWORD/DB，
+  # app 用 DATABASE_URL=postgresql://orion:<pw>@orion-db:5432/orion 走容器名連這顆。
+  db:
+    image: postgres:17-alpine
+    container_name: orion-db
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    volumes:
+      # 具名 volume，資料不隨容器重建消失；redeploy 也沿用同一顆
+      - orion_pgdata:/var/lib/postgresql/data
+    networks:
+      - threealien_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orion -d orion"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
   app:
     build:
       context: .
@@ -7,6 +27,9 @@ services:
     image: orion-pm:latest
     container_name: orion-pm
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       # 只綁 loopback，純供 host 本機除錯用；對外流量走 threealien_network 由 nginx 代理
       - "127.0.0.1:8083:3000"
@@ -35,6 +58,9 @@ services:
       dockerfile: Dockerfile
       target: builder
     image: orion-pm-builder:latest
+    depends_on:
+      db:
+        condition: service_healthy
     env_file:
       - .env.production
     command: ["npx", "prisma", "migrate", "deploy"]
@@ -45,3 +71,8 @@ networks:
   # 既有的反向代理網路（由 ThreeAlien_BackEnd 那組 compose 建立），這裡以 external 參照
   threealien_network:
     external: true
+
+volumes:
+  # 具名（非 compose 專案前綴）→ 手動建的同名 volume 也吃得到，redeploy 不會換顆
+  orion_pgdata:
+    name: orion_pgdata

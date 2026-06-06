@@ -45,3 +45,6 @@ next-env.d.ts
 
 # 一次性開發驗證腳本，不進版控
 scripts/
+
+# DB dump 備份（含真實資料，勿進版控）
+backups/
