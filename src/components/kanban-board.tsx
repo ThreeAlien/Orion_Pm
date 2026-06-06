@@ -674,6 +674,20 @@ export function TaskDrawer({
     };
   }, [task?.id]);
 
+  // P1 即時留言：drawer 開著時每 15 秒撈一次新留言/動態，補上看板 30s polling 不會
+  // 更新「已打開卡片」內容的洞。背景分頁、或正在編輯留言時跳過（不打斷、不浪費）。
+  useEffect(() => {
+    if (!task) return;
+    const taskId = task.id;
+    const id = setInterval(() => {
+      if (document.visibilityState !== "visible" || editingId) return;
+      getTaskTimeline(taskId)
+        .then((items) => setTimeline(items))
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(id);
+  }, [task?.id, editingId]);
+
   async function refetchTimeline() {
     if (!task) return;
     const items = await getTaskTimeline(task.id);
