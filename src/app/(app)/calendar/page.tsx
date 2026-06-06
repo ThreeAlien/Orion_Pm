@@ -1,46 +1,14 @@
 import { CalendarView } from "@/components/calendar-view";
-import { fetchCalendarTasks, fetchCalendarRangeTasks } from "@/server/queries";
+import {
+  fetchCalendarTasks,
+  fetchCalendarRangeTasks,
+  fetchProjects,
+  fetchUsers,
+} from "@/server/queries";
 import { getTeamScope, inTeamScope } from "@/lib/team-scope";
 import { listAllCalendarsEvents } from "@/server/google-calendar";
 import { auth } from "@/auth";
-import type { CalEventItem, GoogleCalStatus, ProjectColor } from "@/lib/data";
-
-// 從任務集合推導出現過的專案（給行事曆篩選 chip 用），去重、依名稱排序
-function deriveCalProjects(
-  tasks: {
-    projectId: string | null;
-    projectName: string | null;
-    projectColor: ProjectColor | null;
-  }[]
-) {
-  const map = new Map<
-    string,
-    { id: string; name: string; color: ProjectColor | null }
-  >();
-  for (const t of tasks) {
-    if (t.projectId && !map.has(t.projectId)) {
-      map.set(t.projectId, {
-        id: t.projectId,
-        name: t.projectName ?? "（未命名）",
-        color: t.projectColor,
-      });
-    }
-  }
-  return [...map.values()].sort((a, b) =>
-    a.name.localeCompare(b.name, "zh-Hant")
-  );
-}
-
-// 從任務集合推導出現過的負責人（給行事曆負責人篩選用）
-function deriveCalPeople(tasks: { assignees: { id: string; name: string }[] }[]) {
-  const map = new Map<string, { id: string; name: string }>();
-  for (const t of tasks) {
-    for (const a of t.assignees) if (!map.has(a.id)) map.set(a.id, a);
-  }
-  return [...map.values()].sort((a, b) =>
-    a.name.localeCompare(b.name, "zh-Hant")
-  );
-}
+import type { CalEventItem, GoogleCalStatus } from "@/lib/data";
 
 // 套用專案 + 負責人篩選
 function applyCalFilters<
@@ -103,6 +71,16 @@ export default async function CalendarPage({
   const scope = await getTeamScope();
   const session = await auth();
   const uid = session?.user?.id;
+  // 篩選清單跟儀表板 / Tasks 同源：全體成員 + 範圍內所有專案（不從畫面任務推導，
+  // 否則只看得到有派工的人）
+  const [allProjects, allUsers] = await Promise.all([
+    fetchProjects(),
+    fetchUsers(),
+  ]);
+  const filterProjects = allProjects
+    .filter((p) => inTeamScope(p.teamSlug, scope))
+    .map((p) => ({ id: p.id, name: p.name, color: p.color }));
+  const filterPeople = allUsers.map((u) => ({ id: u.id, name: u.name }));
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
@@ -122,8 +100,6 @@ export default async function CalendarPage({
     const scoped = (await fetchCalendarRangeTasks(weekStart, weekEnd)).filter(
       (t) => inTeamScope(t.teamSlug, scope)
     );
-    const filterProjects = deriveCalProjects(scoped);
-    const filterPeople = deriveCalPeople(scoped);
     const tasks = applyCalFilters(scoped, activeProject, activeAssignee);
     const { events, status } = await loadGoogleEvents(uid, weekStart, weekEnd);
     return (
@@ -161,8 +137,6 @@ export default async function CalendarPage({
   const scoped = (await fetchCalendarTasks(year, month)).filter((t) =>
     inTeamScope(t.teamSlug, scope)
   );
-  const filterProjects = deriveCalProjects(scoped);
-  const filterPeople = deriveCalPeople(scoped);
   const tasks = applyCalFilters(scoped, activeProject, activeAssignee);
   // 涵蓋月曆網格前後補格（上/下個月露出的日子）
   const gStart = new Date(year, month, -6);
