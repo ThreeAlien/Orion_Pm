@@ -23,14 +23,17 @@ jobs:
         # 正式 env 放在 runner 工作目錄外，每次 build 前 copy 進來
         run: cp /opt/orion-pm-secrets/.env.production .
 
-      - name: Build image
-        run: docker compose build --pull
+      - name: Build images
+        # --profile migrate 一併 build migrate(builder 階段) 與 app(runner 階段)
+        run: docker compose --profile migrate build --pull
 
       - name: Run prisma migrate deploy
-        run: docker compose run --rm app npx prisma migrate deploy
+        # 用 builder 階段容器跑 migration（含完整 node_modules / prisma CLI）
+        run: docker compose run --rm migrate
 
       - name: Start / replace container
-        run: docker compose up -d
+        # 只啟動 app；migrate 在 profile 內，不會被 up 帶起
+        run: docker compose up -d app
 
       - name: Cleanup dangling images
         run: docker image prune -f

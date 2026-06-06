@@ -1,5 +1,6 @@
 # Orion PM — Next.js 16 standalone build
-# 多階段，最終 image 精簡（standalone + 跑 migrate 所需的 prisma CLI）
+# 多階段：app 執行期用精簡 runner（standalone）；
+# prisma migrate deploy 改用 builder 階段（含完整 node_modules）跑，見 docker-compose.yml
 
 FROM node:24-slim AS deps
 WORKDIR /app
@@ -29,26 +30,18 @@ RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
 FROM node:24-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
-# migrate deploy：schema engine 需要 openssl，連 Neon(sslmode=require) 需要 ca-certificates
+# 連 Neon(TLS) 用根憑證；建立非 root 執行帳號
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 1001 nodejs \
     && useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nextjs
 
 # Next.js standalone：自帶 app 執行期最小 node_modules + server.js
+# 不需要 prisma CLI / @prisma/config — app 用的是 build 時 bundle 進 standalone 的
+# generated client（src/generated/prisma）+ @prisma/adapter-pg。migration 走 builder 階段。
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# prisma migrate deploy 用：schema / config / CLI / 連線依賴
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
-# prisma.config.ts 會 import "dotenv/config"；seed 用 tsx（保留供日後 db:seed）
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/dotenv ./node_modules/dotenv
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
 
 USER nextjs
 EXPOSE 3000

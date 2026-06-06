@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
     image: orion-pm:latest
     container_name: orion-pm
     restart: unless-stopped
@@ -22,3 +23,17 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+
+  # 一次性 migration 容器：用 builder 階段（含完整 node_modules，有 prisma CLI + effect 等）
+  # 不會被 `docker compose up` 啟動（profiles），只在部署流程用 `docker compose run --rm migrate` 觸發
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: orion-pm-builder:latest
+    env_file:
+      - .env.production
+    command: ["npx", "prisma", "migrate", "deploy"]
+    restart: "no"
+    profiles: ["migrate"]
