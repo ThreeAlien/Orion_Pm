@@ -368,3 +368,16 @@ model ProjectDocument {
   @@id([projectId, documentId])
   @@index([documentId])
 }
+
+// 富文本貼圖：留言 / 描述貼上或選取的圖片，前端壓成 webp 後存這裡（DB-backed，
+// 無物件儲存、可撐過容器重建）。HTML 內只放 <img src="/api/images/{id}">，不塞 base64。
+model Image {
+  id         String   @id @default(cuid())
+  mime       String   @default("image/webp")
+  bytes      Bytes
+  /// 上傳者（純記錄，不建 FK；使用者刪除也保留圖片）
+  uploaderId String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

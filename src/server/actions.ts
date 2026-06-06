@@ -126,7 +126,7 @@ const TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const satisfies readonly Ta
 
 const CreateTaskSchema = z.object({
   title: z.string().trim().min(1, "請輸入標題").max(200),
-  description: z.string().trim().max(2000).optional().nullable(),
+  description: z.string().trim().max(50000).optional().nullable(),
   status: z.enum(TASK_STATUSES),
   priority: z.enum(TASK_PRIORITIES),
   projectId: z.string().nullable().optional(),
@@ -228,7 +228,7 @@ export async function updateTaskStatus(raw: unknown) {
 const UpdateTaskSchema = z.object({
   id: z.string(),
   title: z.string().trim().min(1).max(200),
-  description: z.string().trim().max(2000).nullable().optional(),
+  description: z.string().trim().max(50000).nullable().optional(),
   status: z.enum(TASK_STATUSES),
   priority: z.enum(TASK_PRIORITIES),
   projectId: z.string().nullable().optional(),
@@ -547,12 +547,12 @@ export async function createDocument(raw: unknown) {
 
 const AddCommentSchema = z.object({
   taskId: z.string(),
-  body: z.string().trim().min(1, "請輸入留言").max(2000),
+  body: z.string().trim().min(1, "請輸入留言").max(50000),
 });
 
 const UpdateCommentSchema = z.object({
   id: z.string(),
-  body: z.string().trim().min(1, "請輸入留言").max(2000),
+  body: z.string().trim().min(1, "請輸入留言").max(50000),
 });
 
 export type CommentResult =
