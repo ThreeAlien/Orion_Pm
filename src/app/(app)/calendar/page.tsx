@@ -1,7 +1,7 @@
 import { CalendarView } from "@/components/calendar-view";
 import { fetchCalendarTasks, fetchCalendarRangeTasks } from "@/server/queries";
 import { getTeamScope, inTeamScope } from "@/lib/team-scope";
-import { listGoogleEvents } from "@/server/google-calendar";
+import { listAllCalendarsEvents } from "@/server/google-calendar";
 import { auth } from "@/auth";
 import type { CalEventItem, GoogleCalStatus, ProjectColor } from "@/lib/data";
 
@@ -62,7 +62,8 @@ async function loadGoogleEvents(
   if (!userId) return { events: [], status: "no_token" };
   let res;
   try {
-    res = await listGoogleEvents(userId, start, end);
+    // 讀使用者所有勾選的行事曆（含同事分享的），合併顯示
+    res = await listAllCalendarsEvents(userId, start, end);
   } catch {
     // 網路 / 例外不能讓整個行事曆頁 500，降級成讀取失敗提示
     return { events: [], status: "api_error" };
@@ -77,6 +78,8 @@ async function loadGoogleEvents(
       startIso: e.start.toISOString(),
       endIso: e.end.toISOString(),
       allDay: e.allDay,
+      calendarName: e.calendarName ?? null,
+      calendarColor: e.calendarColor ?? null,
     })),
     status: "ok",
   };

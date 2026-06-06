@@ -82,6 +82,9 @@ export interface CalEventItem {
   startIso: string;
   endIso: string;
   allDay: boolean;
+  // 來源行事曆（多行事曆合併時標示是誰的；主行事曆為 null）
+  calendarName?: string | null;
+  calendarColor?: string | null;
 }
 
 // 行事曆讀 Google 的狀態：ok / 未連結 / 授權過期 / API 讀取失敗

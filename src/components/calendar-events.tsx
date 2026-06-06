@@ -324,10 +324,20 @@ export function EventChip({ event }: { event: CalEventItem }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title={`${event.title}（Google 事件，點擊編輯）`}
+        title={`${event.title}${
+          event.calendarName ? `（${event.calendarName}）` : ""
+        }（Google 事件，點擊編輯）`}
         className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] bg-text text-surface hover:opacity-85 cursor-pointer text-left"
       >
-        <span className="shrink-0">📅</span>
+        {event.calendarName && event.calendarColor ? (
+          // 別人 / 其他行事曆 → 用該行事曆的 Google 色點標示來源
+          <span
+            className="shrink-0 w-2 h-2 rounded-full"
+            style={{ background: event.calendarColor }}
+          />
+        ) : (
+          <span className="shrink-0">📅</span>
+        )}
         <span className="tabular shrink-0 opacity-70">{time}</span>
         <span className="flex-1 truncate font-medium">{event.title}</span>
       </button>

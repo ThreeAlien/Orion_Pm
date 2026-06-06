@@ -69,6 +69,11 @@ export interface GCalEvent {
   start: Date;
   end: Date;
   allDay: boolean;
+  // 來源行事曆（多行事曆合併時用來標示是誰的 / 哪本）
+  calendarName?: string | null;
+  calendarColor?: string | null;
+  // 跨行事曆去重用（同一場會議在主辦/與會者行事曆 id 不同、iCalUID 相同）
+  iCalUID?: string | null;
 }
 
 // Google 的 event.start/end 可能是 { dateTime } 或全天的 { date }
@@ -83,6 +88,7 @@ function parseGTime(t: { dateTime?: string; date?: string } | undefined): {
 
 interface RawGEvent {
   id: string;
+  iCalUID?: string;
   summary?: string;
   description?: string;
   location?: string;
@@ -90,7 +96,10 @@ interface RawGEvent {
   end?: { dateTime?: string; date?: string };
 }
 
-function mapGEvent(e: RawGEvent): GCalEvent {
+function mapGEvent(
+  e: RawGEvent,
+  cal?: { name: string | null; color: string | null }
+): GCalEvent {
   const s = parseGTime(e.start);
   const en = parseGTime(e.end);
   return {
@@ -101,6 +110,9 @@ function mapGEvent(e: RawGEvent): GCalEvent {
     start: s.date,
     end: en.date,
     allDay: s.allDay,
+    calendarName: cal?.name ?? null,
+    calendarColor: cal?.color ?? null,
+    iCalUID: e.iCalUID ?? null,
   };
 }
 
@@ -126,7 +138,76 @@ export async function listGoogleEvents(
   const res = await calFetch(t.accessToken, `/calendars/primary/events?${qs}`);
   if (!res.ok) return { ok: false, reason: "api_error" };
   const data = (await res.json()) as { items?: RawGEvent[] };
-  return { ok: true, events: (data.items ?? []).map(mapGEvent) };
+  return { ok: true, events: (data.items ?? []).map((e) => mapGEvent(e)) };
+}
+
+interface RawCalListItem {
+  id: string;
+  summary?: string;
+  summaryOverride?: string;
+  backgroundColor?: string;
+  primary?: boolean;
+  selected?: boolean;
+  deleted?: boolean;
+}
+
+// 讀使用者「已勾選顯示」的所有行事曆（含同事分享給他、加進來的），合併時間區間內的事件。
+// 需要 calendar.readonly scope。跨行事曆同一場會議用 iCalUID 去重（保留主行事曆那筆）。
+export async function listAllCalendarsEvents(
+  userId: string,
+  timeMin: Date,
+  timeMax: Date
+): Promise<ListResult> {
+  const t = await getValidAccessToken(userId);
+  if (!t.ok) return { ok: false, reason: t.reason };
+
+  const listRes = await calFetch(t.accessToken, `/users/me/calendarList`);
+  if (!listRes.ok) {
+    // 沒有 calendar.readonly（還沒重新授權）→ 退回只讀主行事曆，不讓頁面壞掉
+    return listGoogleEvents(userId, timeMin, timeMax);
+  }
+  const listData = (await listRes.json()) as { items?: RawCalListItem[] };
+  // 只讀使用者在 Google 有勾選顯示的行事曆；過濾掉已刪除的
+  const cals = (listData.items ?? []).filter(
+    (c) => !c.deleted && c.selected !== false
+  );
+
+  const qs = new URLSearchParams({
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "250",
+  });
+
+  const perCal = await Promise.all(
+    cals.map(async (c) => {
+      const r = await calFetch(
+        t.accessToken,
+        `/calendars/${encodeURIComponent(c.id)}/events?${qs}`
+      );
+      if (!r.ok) return [] as GCalEvent[];
+      const d = (await r.json()) as { items?: RawGEvent[] };
+      const name = c.summaryOverride || c.summary || null;
+      return (d.items ?? []).map((e) =>
+        mapGEvent(e, {
+          name: c.primary ? null : name, // 主行事曆不標來源（就是自己）
+          color: c.backgroundColor ?? null,
+        })
+      );
+    })
+  );
+
+  // 跨行事曆去重：同一 iCalUID 只留一筆（優先主行事曆 = 沒標來源名的）
+  const seen = new Map<string, GCalEvent>();
+  for (const ev of perCal.flat()) {
+    const key = ev.iCalUID || `${ev.title}|${ev.start.toISOString()}`;
+    const existing = seen.get(key);
+    if (!existing || (existing.calendarName && !ev.calendarName)) {
+      seen.set(key, ev);
+    }
+  }
+  return { ok: true, events: [...seen.values()] };
 }
 
 interface EventInput {
