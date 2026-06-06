@@ -4,6 +4,7 @@ import type { ProjectStatus, ViewUser, ViewTeam } from "@/lib/data";
 import { resolveProjectColor } from "@/lib/data";
 import { NewProjectButton } from "./new-project-button";
 import { ArchiveProjectButton } from "./archive-project-button";
+import { EditProjectButton } from "./edit-project-button";
 
 const statusMap: Record<ProjectStatus, { label: string; bg: string; dot: string }> = {
   PLANNING: { label: "規劃中", bg: "bg-blue/[.12]", dot: "bg-blue" },
@@ -37,18 +38,27 @@ export function ProjectsList({
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
         {projects.map((p) => (
-          <ProjectCard key={p.id} project={p} />
+          <ProjectCard key={p.id} project={p} users={users} teams={teams} />
         ))}
       </div>
     </div>
   );
 }
 
-function ProjectCard({ project }: { project: ViewProjectDetail }) {
+function ProjectCard({
+  project,
+  users,
+  teams,
+}: {
+  project: ViewProjectDetail;
+  users: ViewUser[];
+  teams: ViewTeam[];
+}) {
   const status = statusMap[project.status];
   const isDone = project.status === "DONE";
 
   return (
+    <EditProjectButton project={project} users={users} teams={teams}>
     <div
       className="bg-surface-2 rounded-2xl p-5 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
       style={{ boxShadow: "var(--shadow-card)" }}
@@ -121,8 +131,13 @@ function ProjectCard({ project }: { project: ViewProjectDetail }) {
           label="截止"
           value={project.endDate ? fmt(project.endDate) : "未定"}
         />
+        {project.customerName && (
+          <Meta label="客戶" value={project.customerName} />
+        )}
+        {project.brandName && <Meta label="品牌" value={project.brandName} />}
       </div>
     </div>
+    </EditProjectButton>
   );
 }
 

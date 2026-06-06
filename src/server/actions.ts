@@ -418,6 +418,10 @@ const CreateProjectSchema = z.object({
   endDate: z.string().nullable().optional(),
   ownerId: z.string(),
   teamId: z.string().nullable().optional(),
+  // 客戶資訊
+  customerName: z.string().trim().max(120).nullable().optional(),
+  taxId: z.string().trim().max(20).nullable().optional(),
+  brandName: z.string().trim().max(120).nullable().optional(),
 });
 
 const PROJECT_STATUSES = ["PLANNING", "PAUSED", "IN_PROGRESS", "DONE"] as const;
@@ -431,6 +435,9 @@ const UpdateProjectSchema = z.object({
   endDate: z.string().nullable().optional(),
   ownerId: z.string(),
   teamId: z.string().nullable().optional(),
+  customerName: z.string().trim().max(120).nullable().optional(),
+  taxId: z.string().trim().max(20).nullable().optional(),
+  brandName: z.string().trim().max(120).nullable().optional(),
 });
 
 export async function updateProject(raw: unknown) {
@@ -445,6 +452,9 @@ export async function updateProject(raw: unknown) {
       endDate: data.endDate ? new Date(data.endDate) : null,
       ownerId: data.ownerId,
       teamId: data.teamId || null,
+      customerName: data.customerName?.trim() || null,
+      taxId: data.taxId?.trim() || null,
+      brandName: data.brandName?.trim() || null,
     },
   });
   revalidatePath("/");
@@ -519,6 +529,9 @@ export async function createProject(raw: unknown) {
       endDate: data.endDate ? new Date(data.endDate) : null,
       ownerId: data.ownerId,
       teamId: data.teamId || null,
+      customerName: data.customerName?.trim() || null,
+      taxId: data.taxId?.trim() || null,
+      brandName: data.brandName?.trim() || null,
       status: "PLANNING",
     },
   });

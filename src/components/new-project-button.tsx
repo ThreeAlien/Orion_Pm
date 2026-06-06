@@ -67,6 +67,9 @@ function NewProjectDialog({
   const [endDate, setEndDate] = useState("");
   const [ownerId, setOwnerId] = useState("");
   const [teamId, setTeamId] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [brandName, setBrandName] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -77,6 +80,9 @@ function NewProjectDialog({
       setEndDate("");
       setOwnerId(currentUserId ?? users[0]?.id ?? "");
       setTeamId("");
+      setCustomerName("");
+      setTaxId("");
+      setBrandName("");
       setSaving(false);
     }
   }, [open, users, currentUserId]);
@@ -102,6 +108,9 @@ function NewProjectDialog({
         endDate: endDate || null,
         ownerId,
         teamId: teamId || null,
+        customerName: customerName || null,
+        taxId: taxId || null,
+        brandName: brandName || null,
       });
       setSaving(false);
       router.refresh();
@@ -238,6 +247,33 @@ function NewProjectDialog({
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                />
+              </Field>
+              <Field label="客戶名稱">
+                <input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="如：珘寶家企業股份有限公司"
+                  maxLength={120}
+                />
+              </Field>
+              <Field label="客戶統編">
+                <input
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="8 碼數字"
+                  maxLength={20}
+                />
+              </Field>
+              <Field label="品牌名稱">
+                <input
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="如：微光湖盼"
+                  maxLength={120}
                 />
               </Field>
             </div>

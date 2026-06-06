@@ -132,6 +132,11 @@ model Project {
   endDate     DateTime?
   fileUrl     String?
 
+  // 客戶資訊（業主填）
+  customerName String?
+  taxId        String?
+  brandName    String?
+
   ownerId     String
   owner       User              @relation("ProjectOwner", fields: [ownerId], references: [id])
 

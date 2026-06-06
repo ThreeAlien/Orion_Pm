@@ -179,6 +179,9 @@ export interface ViewProjectDetail {
   ownerName: string;
   teamId: string | null;
   teamName: string | null;
+  customerName: string | null;
+  taxId: string | null;
+  brandName: string | null;
   totalTasks: number;
   completedTasks: number;
   completionRate: number;
@@ -209,6 +212,9 @@ export async function fetchProjectDetail(
     ownerName: p.owner.name,
     teamId: p.team?.id ?? null,
     teamName: p.team?.name ?? null,
+    customerName: p.customerName ?? null,
+    taxId: p.taxId ?? null,
+    brandName: p.brandName ?? null,
     totalTasks: total,
     completedTasks: done,
     completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
@@ -239,6 +245,9 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
       ownerName: p.owner.name,
       teamId: p.team?.id ?? null,
       teamName: p.team?.name ?? null,
+      customerName: p.customerName ?? null,
+      taxId: p.taxId ?? null,
+      brandName: p.brandName ?? null,
       totalTasks: total,
       completedTasks: done,
       completionRate: total === 0 ? 0 : Math.round((done / total) * 100),

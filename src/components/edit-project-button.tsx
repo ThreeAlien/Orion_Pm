@@ -34,21 +34,30 @@ export function EditProjectButton({
   project,
   users,
   teams,
+  children,
 }: {
   project: ViewProjectDetail;
   users: ViewUser[];
   teams: ViewTeam[];
+  // 給自訂觸發元素（如整張專案卡）用；沒給就用預設「編輯」按鈕
+  children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="px-3.5 py-2 bg-rule-soft hover:bg-rule rounded-[10px] font-medium text-[13px] text-text-dim cursor-pointer"
-      >
-        編輯
-      </button>
+      {children ? (
+        <div onClick={() => setOpen(true)} className="cursor-pointer">
+          {children}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="px-3.5 py-2 bg-rule-soft hover:bg-rule rounded-[10px] font-medium text-[13px] text-text-dim cursor-pointer"
+        >
+          編輯
+        </button>
+      )}
       <EditProjectDialog
         open={open}
         onClose={() => setOpen(false)}
@@ -82,6 +91,9 @@ function EditProjectDialog({
   const [endDate, setEndDate] = useState("");
   const [ownerId, setOwnerId] = useState(project.ownerId);
   const [teamId, setTeamId] = useState(project.teamId ?? "");
+  const [customerName, setCustomerName] = useState(project.customerName ?? "");
+  const [taxId, setTaxId] = useState(project.taxId ?? "");
+  const [brandName, setBrandName] = useState(project.brandName ?? "");
   const [saving, setSaving] = useState(false);
 
   // sync from project
@@ -98,6 +110,9 @@ function EditProjectDialog({
       );
       setOwnerId(project.ownerId);
       setTeamId(project.teamId ?? "");
+      setCustomerName(project.customerName ?? "");
+      setTaxId(project.taxId ?? "");
+      setBrandName(project.brandName ?? "");
       setSaving(false);
     }
   }, [open, project]);
@@ -126,6 +141,9 @@ function EditProjectDialog({
         endDate: endDate || null,
         ownerId,
         teamId: teamId || null,
+        customerName: customerName || null,
+        taxId: taxId || null,
+        brandName: brandName || null,
       });
       setSaving(false);
       router.refresh();
@@ -283,6 +301,36 @@ function EditProjectDialog({
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="客戶名稱">
+                <input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="如：珘寶家企業股份有限公司"
+                  maxLength={120}
+                />
+              </Field>
+              <Field label="客戶統編">
+                <input
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="8 碼數字"
+                  maxLength={20}
+                />
+              </Field>
+              <Field label="品牌名稱">
+                <input
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="如：微光湖盼"
+                  maxLength={120}
                 />
               </Field>
             </div>
