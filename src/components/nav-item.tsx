@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SidebarTip } from "./sidebar-tip";
 
 export function NavItem({
   icon,
@@ -34,32 +35,34 @@ export function NavItem({
     : `${base} ${sizing} text-text hover:bg-rule-soft`;
 
   return (
-    <Link
-      href={href}
-      className={cls}
-      onClick={onClick}
-      title={collapsed ? label : undefined}
-    >
-      <span
-        className="w-[18px] text-center text-[16px] flex-shrink-0"
-        style={iconColor ? { color: iconColor } : undefined}
+    <SidebarTip label={label} enabled={!!collapsed}>
+      <Link
+        href={href}
+        className={cls}
+        onClick={onClick}
+        title={collapsed ? label : undefined}
       >
-        {icon}
-      </span>
-      {!collapsed && (
-        <>
-          <span className="truncate">{label}</span>
-          {count != null && (
-            <span
-              className={`ml-auto text-xs tabular ${
-                active ? "text-white/70" : "text-text-faint"
-              }`}
-            >
-              {count}
-            </span>
-          )}
-        </>
-      )}
-    </Link>
+        <span
+          className="w-[18px] text-center text-[16px] flex-shrink-0"
+          style={iconColor ? { color: iconColor } : undefined}
+        >
+          {icon}
+        </span>
+        {!collapsed && (
+          <>
+            <span className="truncate">{label}</span>
+            {count != null && (
+              <span
+                className={`ml-auto text-xs tabular ${
+                  active ? "text-white/70" : "text-text-faint"
+                }`}
+              >
+                {count}
+              </span>
+            )}
+          </>
+        )}
+      </Link>
+    </SidebarTip>
   );
 }
