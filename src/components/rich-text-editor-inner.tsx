@@ -121,7 +121,12 @@ export function RichTextEditorInner({
     if (!editor) return;
     const root = editor.root;
 
+    // 掛在 document 的 capture 階段：一定比 Quill 在 root（事件 target）上的 clipboard
+    // listener 早跑。確認事件落在「自己這個編輯器」(root.contains) 才攔，preventDefault
+    // + stopPropagation 直接擋掉 Quill 把圖塞成 base64 的預設行為 → 只留壓縮上傳那張，
+    // 避免一次貼上變兩張（壓縮那張 + base64 那張）。
     const onPaste = (e: ClipboardEvent) => {
+      if (!e.target || !root.contains(e.target as Node)) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const it of Array.from(items)) {
@@ -129,6 +134,7 @@ export function RichTextEditorInner({
           const f = it.getAsFile();
           if (f) {
             e.preventDefault();
+            e.stopPropagation();
             insertImage(f);
             return;
           }
@@ -136,20 +142,22 @@ export function RichTextEditorInner({
       }
     };
     const onDrop = (e: DragEvent) => {
+      if (!e.target || !root.contains(e.target as Node)) return;
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
       const imgFile = Array.from(files).find((f) => f.type.startsWith("image/"));
       if (imgFile) {
         e.preventDefault();
+        e.stopPropagation();
         insertImage(imgFile);
       }
     };
 
-    root.addEventListener("paste", onPaste);
-    root.addEventListener("drop", onDrop);
+    document.addEventListener("paste", onPaste, true);
+    document.addEventListener("drop", onDrop, true);
     return () => {
-      root.removeEventListener("paste", onPaste);
-      root.removeEventListener("drop", onDrop);
+      document.removeEventListener("paste", onPaste, true);
+      document.removeEventListener("drop", onDrop, true);
     };
   }, [insertImage]);
 
