@@ -1,7 +1,7 @@
 // Projects 列表頁 — 卡片 grid
 import type { ViewProjectDetail } from "@/server/queries";
 import type { ProjectStatus, ViewUser, ViewTeam } from "@/lib/data";
-import { resolveProjectColor } from "@/lib/data";
+import { resolveProjectColor, projectCategoryLabel } from "@/lib/data";
 import { NewProjectButton } from "./new-project-button";
 import { ArchiveProjectButton } from "./archive-project-button";
 import { EditProjectButton } from "./edit-project-button";
@@ -93,6 +93,11 @@ function ProjectCard({
                 {project.teamName}
               </span>
             )}
+            {projectCategoryLabel(project.category) && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue/[.12] text-blue">
+                {projectCategoryLabel(project.category)}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -135,6 +140,7 @@ function ProjectCard({
           <Meta label="客戶" value={project.customerName} />
         )}
         {project.brandName && <Meta label="品牌" value={project.brandName} />}
+        {project.salesName && <Meta label="業務" value={project.salesName} />}
       </div>
     </div>
     </EditProjectButton>

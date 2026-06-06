@@ -185,6 +185,8 @@ export interface ViewProjectDetail {
   customerName: string | null;
   taxId: string | null;
   brandName: string | null;
+  category: string | null;
+  salesName: string | null;
   fileLinks: { label: string; url: string }[];
   totalTasks: number;
   completedTasks: number;
@@ -219,6 +221,8 @@ export async function fetchProjectDetail(
     customerName: p.customerName ?? null,
     taxId: p.taxId ?? null,
     brandName: p.brandName ?? null,
+    category: p.category ?? null,
+    salesName: p.salesName ?? null,
     fileLinks: Array.isArray(p.fileLinks)
       ? (p.fileLinks as { label: string; url: string }[])
       : [],
@@ -255,6 +259,8 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
       customerName: p.customerName ?? null,
       taxId: p.taxId ?? null,
       brandName: p.brandName ?? null,
+      category: p.category ?? null,
+      salesName: p.salesName ?? null,
       fileLinks: Array.isArray(p.fileLinks)
         ? (p.fileLinks as { label: string; url: string }[])
         : [],

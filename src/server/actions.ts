@@ -422,6 +422,9 @@ const CreateProjectSchema = z.object({
   customerName: z.string().trim().max(120).nullable().optional(),
   taxId: z.string().trim().max(20).nullable().optional(),
   brandName: z.string().trim().max(120).nullable().optional(),
+  // 類型 + 業務
+  category: z.string().trim().max(20).nullable().optional(),
+  salesName: z.string().trim().max(60).nullable().optional(),
 });
 
 const PROJECT_STATUSES = ["PLANNING", "PAUSED", "IN_PROGRESS", "DONE"] as const;
@@ -438,6 +441,8 @@ const UpdateProjectSchema = z.object({
   customerName: z.string().trim().max(120).nullable().optional(),
   taxId: z.string().trim().max(20).nullable().optional(),
   brandName: z.string().trim().max(120).nullable().optional(),
+  category: z.string().trim().max(20).nullable().optional(),
+  salesName: z.string().trim().max(60).nullable().optional(),
   // 檔案統籌表：標籤 + 超連結清單
   fileLinks: z
     .array(
@@ -464,6 +469,8 @@ export async function updateProject(raw: unknown) {
       customerName: data.customerName?.trim() || null,
       taxId: data.taxId?.trim() || null,
       brandName: data.brandName?.trim() || null,
+      category: data.category?.trim() || null,
+      salesName: data.salesName?.trim() || null,
       // 只留有填東西的列（label 或 url 任一非空）
       ...(data.fileLinks
         ? {
@@ -549,6 +556,8 @@ export async function createProject(raw: unknown) {
       customerName: data.customerName?.trim() || null,
       taxId: data.taxId?.trim() || null,
       brandName: data.brandName?.trim() || null,
+      category: data.category?.trim() || null,
+      salesName: data.salesName?.trim() || null,
       status: "PLANNING",
     },
   });

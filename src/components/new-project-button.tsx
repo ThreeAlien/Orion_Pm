@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/server/actions";
 import type { ViewUser, ViewTeam } from "@/lib/data";
-import { NAMED_PROJECT_COLORS } from "@/lib/data";
+import { NAMED_PROJECT_COLORS, PROJECT_CATEGORIES } from "@/lib/data";
 
 const PRESET_COLORS = [
   { hex: NAMED_PROJECT_COLORS.red, label: "紅" },
@@ -70,6 +70,8 @@ function NewProjectDialog({
   const [customerName, setCustomerName] = useState("");
   const [taxId, setTaxId] = useState("");
   const [brandName, setBrandName] = useState("");
+  const [category, setCategory] = useState("");
+  const [salesName, setSalesName] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -83,6 +85,8 @@ function NewProjectDialog({
       setCustomerName("");
       setTaxId("");
       setBrandName("");
+      setCategory("");
+      setSalesName("");
       setSaving(false);
     }
   }, [open, users, currentUserId]);
@@ -111,6 +115,8 @@ function NewProjectDialog({
         customerName: customerName || null,
         taxId: taxId || null,
         brandName: brandName || null,
+        category: category || null,
+        salesName: salesName || null,
       });
       setSaving(false);
       router.refresh();
@@ -247,6 +253,29 @@ function NewProjectDialog({
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                />
+              </Field>
+              <Field label="類型">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                >
+                  <option value="">（未分類）</option>
+                  {PROJECT_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="業務名稱">
+                <input
+                  value={salesName}
+                  onChange={(e) => setSalesName(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="負責這案的業務"
+                  maxLength={60}
                 />
               </Field>
               <Field label="客戶名稱">

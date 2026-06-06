@@ -6,6 +6,7 @@ import { updateProject, archiveProject } from "@/server/actions";
 import {
   NAMED_PROJECT_COLORS,
   resolveProjectColor,
+  PROJECT_CATEGORIES,
   type ViewUser,
   type ViewTeam,
   type ProjectStatus,
@@ -94,6 +95,8 @@ function EditProjectDialog({
   const [customerName, setCustomerName] = useState(project.customerName ?? "");
   const [taxId, setTaxId] = useState(project.taxId ?? "");
   const [brandName, setBrandName] = useState(project.brandName ?? "");
+  const [category, setCategory] = useState(project.category ?? "");
+  const [salesName, setSalesName] = useState(project.salesName ?? "");
   const [fileLinks, setFileLinks] = useState<{ label: string; url: string }[]>(
     project.fileLinks ?? []
   );
@@ -117,6 +120,8 @@ function EditProjectDialog({
       setCustomerName(project.customerName ?? "");
       setTaxId(project.taxId ?? "");
       setBrandName(project.brandName ?? "");
+      setCategory(project.category ?? "");
+      setSalesName(project.salesName ?? "");
       setFileLinks(project.fileLinks ?? []);
       setLinksOpen((project.fileLinks?.length ?? 0) > 0);
       setSaving(false);
@@ -150,6 +155,8 @@ function EditProjectDialog({
         customerName: customerName || null,
         taxId: taxId || null,
         brandName: brandName || null,
+        category: category || null,
+        salesName: salesName || null,
         fileLinks,
       });
       setSaving(false);
@@ -313,6 +320,29 @@ function EditProjectDialog({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="類型">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                >
+                  <option value="">（未分類）</option>
+                  {PROJECT_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="業務名稱">
+                <input
+                  value={salesName}
+                  onChange={(e) => setSalesName(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="負責這案的業務"
+                  maxLength={60}
+                />
+              </Field>
               <Field label="客戶名稱">
                 <input
                   value={customerName}

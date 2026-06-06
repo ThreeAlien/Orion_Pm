@@ -199,3 +199,15 @@ export function computeDashboardStats(tasks: ViewTask[]): DashboardStats {
     completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
   };
 }
+
+// 專案類型選項（網站 / SEO / 廣告 / 其他）— 下拉選單與顯示共用
+export const PROJECT_CATEGORIES = [
+  { value: "WEBSITE", label: "網站" },
+  { value: "SEO", label: "SEO" },
+  { value: "AD", label: "廣告" },
+  { value: "OTHER", label: "其他" },
+] as const;
+
+export function projectCategoryLabel(v?: string | null): string | null {
+  return PROJECT_CATEGORIES.find((c) => c.value === v)?.label ?? null;
+}

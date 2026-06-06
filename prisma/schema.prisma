@@ -136,6 +136,10 @@ model Project {
   customerName String?
   taxId        String?
   brandName    String?
+  // 專案類型：WEBSITE / SEO / AD / OTHER（app 層管選項，不用 enum 免 migration 綁死）
+  category     String?
+  // 業務名稱
+  salesName    String?
 
   // 檔案統籌表：[{ label, url }] 連結清單，業主自填、快速點開檔案位置
   fileLinks    Json   @default("[]")
