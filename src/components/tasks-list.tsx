@@ -150,15 +150,32 @@ export function TasksList({
 
       {(projects.length > 0 || users.length > 0) && (
         <div className="flex items-center gap-1.5 flex-wrap mt-3">
+          {/* 順序統一儀表板：全部 → 負責人 → 專案 chips */}
           <FilterChip
-            active={selectedProjectIds.size === 0 && !assigneeFilter}
-            onClick={() => {
-              setSelectedProjectIds(new Set());
-              setAssigneeFilter("");
-            }}
+            active={selectedProjectIds.size === 0}
+            onClick={() => setSelectedProjectIds(new Set())}
           >
             全部
           </FilterChip>
+          {users.length > 0 && (
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className={`px-2.5 py-[5px] rounded-full text-[13px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
+                assigneeFilter
+                  ? "bg-text text-surface"
+                  : "bg-rule-soft text-text hover:bg-[#EAEAEF]"
+              }`}
+              title="依負責人篩選"
+            >
+              <option value="">👤 所有負責人</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          )}
           {projects.map((p) => (
             <FilterChip
               key={p.id}
@@ -169,20 +186,6 @@ export function TasksList({
               {p.name}
             </FilterChip>
           ))}
-          {users.length > 0 && (
-            <select
-              value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="ml-1 bg-rule-soft border-0 rounded-full px-3 py-[5px] text-xs text-text-dim font-medium focus:outline-none cursor-pointer"
-            >
-              <option value="">所有負責人</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
       )}
 

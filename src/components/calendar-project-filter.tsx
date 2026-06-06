@@ -39,30 +39,24 @@ export function CalendarProjectFilter({
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap mt-3">
+      {/* 順序統一儀表板：全部 → 負責人 → 專案 chips */}
       {projects.length > 0 && (
-        <>
-          <Chip active={!active} onClick={() => setParam("project", null)}>
-            全部專案
-          </Chip>
-          {projects.map((p) => (
-            <Chip
-              key={p.id}
-              active={active === p.id}
-              dotColor={p.color}
-              onClick={() => setParam("project", p.id)}
-            >
-              {p.name}
-            </Chip>
-          ))}
-        </>
+        <Chip active={!active} onClick={() => setParam("project", null)}>
+          全部專案
+        </Chip>
       )}
       {people.length > 0 && (
         <select
           value={activeAssignee ?? ""}
           onChange={(e) => setParam("assignee", e.target.value || null)}
-          className="ml-1 bg-rule-soft border-0 rounded-full px-3 py-[5px] text-xs text-text-dim font-medium focus:outline-none cursor-pointer"
+          className={`px-2.5 py-[5px] rounded-full text-[13px] font-medium cursor-pointer transition-colors border-0 focus:outline-none ${
+            activeAssignee
+              ? "bg-text text-surface"
+              : "bg-rule-soft text-text hover:bg-[#EAEAEF]"
+          }`}
+          title="依負責人篩選"
         >
-          <option value="">所有負責人</option>
+          <option value="">👤 所有負責人</option>
           {people.map((u) => (
             <option key={u.id} value={u.id}>
               {u.name}
@@ -70,6 +64,16 @@ export function CalendarProjectFilter({
           ))}
         </select>
       )}
+      {projects.map((p) => (
+        <Chip
+          key={p.id}
+          active={active === p.id}
+          dotColor={p.color}
+          onClick={() => setParam("project", p.id)}
+        >
+          {p.name}
+        </Chip>
+      ))}
     </div>
   );
 }
