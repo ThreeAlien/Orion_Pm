@@ -2,16 +2,20 @@
 
 import { useState } from "react";
 import { NewTaskDialog } from "./new-task-dialog";
-import type { ViewProject, ViewUser } from "@/lib/data";
+import type { ViewProject, ViewUser, ViewTeam } from "@/lib/data";
 
 export function Topbar({
   projects,
   users,
+  teams,
+  defaultTeamId,
   currentUserId,
   onMobileMenuOpen,
 }: {
   projects: ViewProject[];
   users: ViewUser[];
+  teams: ViewTeam[];
+  defaultTeamId?: string;
   currentUserId?: string;
   onMobileMenuOpen?: () => void;
 }) {
@@ -51,6 +55,8 @@ export function Topbar({
         onClose={() => setDialogOpen(false)}
         projects={projects}
         users={users}
+        teams={teams}
+        defaultTeamId={defaultTeamId}
         defaultAssigneeId={currentUserId}
       />
     </>

@@ -130,6 +130,8 @@ const CreateTaskSchema = z.object({
   status: z.enum(TASK_STATUSES),
   priority: z.enum(TASK_PRIORITIES),
   projectId: z.string().nullable().optional(),
+  // 直屬團隊：沒掛專案時讓卡片歸隊（有專案時顯示跟著專案的團隊走）
+  teamId: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
   // 多負責人；沒給就退回單一 assigneeId（外部 API 相容）
   assigneeIds: z.array(z.string()).optional(),
@@ -176,6 +178,8 @@ export async function createTask(
       status: data.status,
       priority: data.priority,
       projectId: data.projectId || null,
+      // 有專案時 teamId 留著也無妨（顯示以專案團隊為準）；沒專案才靠它歸隊
+      teamId: data.teamId || null,
       assigneeId: assigneeIds[0] ?? null, // 主負責人 = 第一位
       assignees: { create: assigneeIds.map((userId) => ({ userId })) },
       startDate: data.startDate ? new Date(data.startDate) : null,

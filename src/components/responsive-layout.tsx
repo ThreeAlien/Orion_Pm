@@ -223,6 +223,9 @@ export function ResponsiveLayout({
         <Topbar
           projects={projects}
           users={users}
+          teams={teams}
+          // 新任務「團隊」預設帶目前選的團隊 scope（"all" 時找不到→未分隊）
+          defaultTeamId={teams.find((t) => t.slug === teamScope)?.id ?? ""}
           currentUserId={currentUserId}
           onMobileMenuOpen={() => setMobileOpen(true)}
         />

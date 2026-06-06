@@ -7,6 +7,7 @@ import { AssigneePicker } from "./assignee-picker";
 import type {
   ViewProject,
   ViewUser,
+  ViewTeam,
   TaskStatus,
   TaskPriority,
 } from "@/lib/data";
@@ -30,16 +31,20 @@ export function NewTaskDialog({
   onClose,
   projects,
   users,
+  teams,
   defaultStatus = "TODO",
   defaultProjectId,
+  defaultTeamId,
   defaultAssigneeId,
 }: {
   open: boolean;
   onClose: () => void;
   projects: ViewProject[];
   users: ViewUser[];
+  teams: ViewTeam[];
   defaultStatus?: TaskStatus;
   defaultProjectId?: string;
+  defaultTeamId?: string;
   defaultAssigneeId?: string;
 }) {
   const [title, setTitle] = useState("");
@@ -47,6 +52,7 @@ export function NewTaskDialog({
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [projectId, setProjectId] = useState<string>(defaultProjectId ?? "");
+  const [teamId, setTeamId] = useState<string>(defaultTeamId ?? "");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -62,12 +68,13 @@ export function NewTaskDialog({
       setStatus(defaultStatus);
       setPriority("MEDIUM");
       setProjectId(defaultProjectId ?? "");
+      setTeamId(defaultTeamId ?? "");
       setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setStartDate("");
       setDueDate("");
       setError(null);
     }
-  }, [open, defaultStatus, defaultProjectId, defaultAssigneeId]);
+  }, [open, defaultStatus, defaultProjectId, defaultTeamId, defaultAssigneeId]);
 
   // ESC 關閉
   useEffect(() => {
@@ -89,6 +96,8 @@ export function NewTaskDialog({
         status,
         priority,
         projectId: projectId || null,
+        // 有選專案就跟著專案的團隊走，不存直屬 team；沒專案才用選的團隊歸隊
+        teamId: projectId ? null : teamId || null,
         assigneeIds,
         startDate: startDate || null,
         dueDate: dueDate || null,
@@ -190,6 +199,19 @@ export function NewTaskDialog({
                   ]}
                 />
               </Field>
+              {teams.length > 0 && (
+                <Field label={projectId ? "團隊（跟著專案）" : "團隊"}>
+                  <Select
+                    value={projectId ? "" : teamId}
+                    onChange={setTeamId}
+                    disabled={!!projectId}
+                    options={[
+                      { value: "", label: "（無 / 未分隊）" },
+                      ...teams.map((t) => ({ value: t.id, label: t.name })),
+                    ]}
+                  />
+                </Field>
+              )}
               <Field label="負責人（可多選）">
                 <AssigneePicker
                   users={users}
@@ -271,16 +293,19 @@ function Select({
   value,
   onChange,
   options,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string; color?: string }[];
+  disabled?: boolean;
 }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface appearance-none bg-[length:14px] bg-no-repeat bg-[right_10px_center] pr-8"
+      disabled={disabled}
+      className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface appearance-none bg-[length:14px] bg-no-repeat bg-[right_10px_center] pr-8 disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
         backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236E6E73' d='M5 6L0 0h10z'/%3E%3C/svg%3E")`,
       }}

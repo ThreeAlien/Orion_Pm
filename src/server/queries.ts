@@ -293,6 +293,7 @@ export async function fetchCalendarRangeTasks(
     orderBy: { dueDate: "asc" },
     include: {
       project: { select: { name: true, color: true, team: { select: { slug: true } } } },
+      team: { select: { slug: true } },
     },
   });
   return rows
@@ -305,7 +306,8 @@ export async function fetchCalendarRangeTasks(
       projectId: r.projectId,
       projectColor: r.project ? (r.project.color as ProjectColor) : null,
       projectName: r.project?.name ?? null,
-      teamSlug: r.project?.team?.slug ?? null,
+      // 專案的團隊優先，沒專案才用直屬 team
+      teamSlug: r.project?.team?.slug ?? r.team?.slug ?? null,
       dueDate: r.dueDate!,
     }));
 }
@@ -516,6 +518,7 @@ export async function fetchTasks(): Promise<ViewTask[]> {
       assignee: true,
       assignees: { include: { user: true } },
       project: { select: { team: { select: { slug: true } } } },
+      team: { select: { slug: true } },
       subtasks: { select: { id: true, status: true } },
       checklist: { select: { done: true } },
       _count: { select: { comments: true } },
@@ -551,7 +554,8 @@ export async function fetchTasks(): Promise<ViewTask[]> {
           ? { done: checklistDone, total: checklistTotal }
           : undefined,
       commentCount: t._count.comments,
-      teamSlug: t.project?.team?.slug ?? null,
+      // 專案的團隊優先，沒專案才用直屬 team（讓沒掛專案的卡也能歸隊）
+      teamSlug: t.project?.team?.slug ?? t.team?.slug ?? null,
     };
   });
 }

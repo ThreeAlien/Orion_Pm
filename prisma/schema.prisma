@@ -160,6 +160,8 @@ model Team {
   sort      Int       @default(0)
 
   projects  Project[]
+  // 直屬此團隊的任務（沒掛專案、但指定了團隊的卡）
+  tasks     Task[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -193,6 +195,11 @@ model Task {
   projectId    String?
   project      Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
+  // 直屬團隊：給「沒掛專案」的卡片用，讓它在多團隊看板仍能歸隊。
+  // 顯示時專案的團隊優先（有專案跟專案走），沒專案才用這個 fallback。
+  teamId       String?
+  team         Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
   // 主負責人（denormalized，給外部 API / 活動軌跡用）；完整清單看 assignees
   assigneeId   String?
   assignee     User?            @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
@@ -223,6 +230,7 @@ model Task {
   @@index([assigneeId, dueDate])
   @@index([parentTaskId])
   @@index([status, position])
+  @@index([teamId])
 }
 
 // 任務 ↔ 負責人 多對多（一個任務可掛多位負責人）
