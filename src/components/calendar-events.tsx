@@ -325,7 +325,7 @@ export function EventChip({ event }: { event: CalEventItem }) {
         type="button"
         onClick={() => setOpen(true)}
         title={`${event.title}（Google 事件，點擊編輯）`}
-        className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] bg-green/[.14] text-green hover:bg-green/[.22] cursor-pointer text-left"
+        className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] bg-text text-surface hover:opacity-85 cursor-pointer text-left"
       >
         <span className="shrink-0">📅</span>
         <span className="tabular shrink-0 opacity-70">{time}</span>

@@ -9,8 +9,10 @@ import {
   type ViewUser,
   type TaskStatus,
   type TaskPriority,
+  type ProjectColor,
   kanbanColumns,
   projectChipStyle,
+  resolveProjectColor,
 } from "@/lib/data";
 import { ViewToggle } from "./view-toggle";
 import { TaskDrawer } from "./kanban-board";
@@ -43,7 +45,7 @@ type SortKey = "project" | "status" | "priority" | "assignee" | "due" | "title";
 type SortDir = "asc" | "desc";
 
 export function TasksList({
-  tasks,
+  tasks: allTasks,
   projects,
   users,
 }: {
@@ -55,6 +57,38 @@ export function TasksList({
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [openTask, setOpenTask] = useState<ViewTask | null>(null);
+  // 篩選：專案（多選）+ 負責人（單選）。跟儀表板一致
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("");
+
+  // 先套篩選，再進分組 / 排序
+  const tasks = allTasks.filter((t) => {
+    if (
+      selectedProjectIds.size > 0 &&
+      !(t.projectId && selectedProjectIds.has(t.projectId))
+    )
+      return false;
+    if (
+      assigneeFilter &&
+      !(
+        t.assignees?.some((a) => a.id === assigneeFilter) ??
+        t.assignee?.id === assigneeFilter
+      )
+    )
+      return false;
+    return true;
+  });
+
+  function toggleProject(id: string) {
+    setSelectedProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function clickHeader(key: SortKey) {
     if (sortKey === key) {
@@ -113,6 +147,44 @@ export function TasksList({
         sortKey={sortKey}
         onReset={() => setSortKey(null)}
       />
+
+      {(projects.length > 0 || users.length > 0) && (
+        <div className="flex items-center gap-1.5 flex-wrap mt-3">
+          <FilterChip
+            active={selectedProjectIds.size === 0 && !assigneeFilter}
+            onClick={() => {
+              setSelectedProjectIds(new Set());
+              setAssigneeFilter("");
+            }}
+          >
+            全部
+          </FilterChip>
+          {projects.map((p) => (
+            <FilterChip
+              key={p.id}
+              active={selectedProjectIds.has(p.id)}
+              dotColor={p.color}
+              onClick={() => toggleProject(p.id)}
+            >
+              {p.name}
+            </FilterChip>
+          ))}
+          {users.length > 0 && (
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="ml-1 bg-rule-soft border-0 rounded-full px-3 py-[5px] text-xs text-text-dim font-medium focus:outline-none cursor-pointer"
+            >
+              <option value="">所有負責人</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto -mx-6 px-6 mt-4">
         <div className="min-w-[900px]">
@@ -338,6 +410,37 @@ function Row({
         {task.due ?? "—"}
       </div>
     </div>
+  );
+}
+
+function FilterChip({
+  children,
+  active,
+  dotColor,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  dotColor?: ProjectColor;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-3 py-[5px] rounded-full text-xs font-medium cursor-pointer transition-colors ${
+        active
+          ? "bg-text text-surface"
+          : "bg-rule-soft text-text-dim hover:bg-rule"
+      }`}
+    >
+      {dotColor && (
+        <span
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ background: resolveProjectColor(dotColor) }}
+        />
+      )}
+      {children}
+    </button>
   );
 }
 
