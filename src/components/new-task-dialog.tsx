@@ -212,7 +212,7 @@ export function NewTaskDialog({
                   />
                 </Field>
               )}
-              <Field label="負責人（可多選）">
+              <Field label="負責人（可多選）" as="div">
                 <AssigneePicker
                   users={users}
                   selectedIds={assigneeIds}
@@ -273,19 +273,23 @@ function Field({
   label,
   required,
   children,
+  // 複合控制項（如負責人 picker）要傳 as="div"：<label> 會把空白處的 click 轉發給
+  // 內部第一個按鈕（chip 的 ✕），導致點欄位空白就誤刪第一位負責人。
+  as: Wrapper = "label",
 }: {
   label: string;
   required?: boolean;
   children: React.ReactNode;
+  as?: "label" | "div";
 }) {
   return (
-    <label className="block">
+    <Wrapper className="block">
       <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
         {label}
         {required && <span className="text-red ml-1">*</span>}
       </div>
       {children}
-    </label>
+    </Wrapper>
   );
 }
 

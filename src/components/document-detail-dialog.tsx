@@ -192,7 +192,7 @@ export function DocumentDetailDialog({
                 </Field>
               </div>
 
-              <Field label="內文">
+              <Field label="內文" as="div">
                 <RichTextEditor
                   value={body}
                   onChange={setBody}
@@ -235,18 +235,22 @@ function Field({
   label,
   required,
   children,
+  // 複合控制項（如富文本編輯器）要傳 as="div"：<label> 會把空白處的 click 轉發給
+  // 內部第一個按鈕（工具列），點 label 會誤觸格式 / 焦點亂跳。
+  as: Wrapper = "label",
 }: {
   label: string;
   required?: boolean;
   children: React.ReactNode;
+  as?: "label" | "div";
 }) {
   return (
-    <label className="block">
+    <Wrapper className="block">
       <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
         {label}
         {required && <span className="text-red ml-1">*</span>}
       </div>
       {children}
-    </label>
+    </Wrapper>
   );
 }
