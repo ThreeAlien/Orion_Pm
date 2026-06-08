@@ -139,13 +139,13 @@ function NewProjectDialog({
         onClick={onClose}
       />
       <div
-        className={`fixed left-1/2 top-1/2 -translate-x-1/2 z-50 w-[480px] max-w-[92vw] bg-surface rounded-2xl shadow-2xl transition-all duration-200 ${
+        className={`fixed left-1/2 top-1/2 -translate-x-1/2 z-50 w-[880px] max-w-[94vw] max-h-[90dvh] flex flex-col bg-surface rounded-2xl shadow-2xl transition-all duration-200 ${
           open
             ? "opacity-100 scale-100 -translate-y-1/2"
             : "opacity-0 scale-95 -translate-y-[55%] pointer-events-none"
         }`}
       >
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="px-6 py-4 border-b border-rule flex items-center gap-3">
             <h2 className="text-lg font-bold tracking-tight">新專案</h2>
             <div className="flex-1" />
@@ -158,7 +158,7 @@ function NewProjectDialog({
             </button>
           </div>
 
-          <div className="px-6 py-5 space-y-4">
+          <div className="flex-1 overflow-auto px-6 py-5 space-y-4">
             <Field label="專案名稱" required>
               <input
                 autoFocus
@@ -313,26 +313,28 @@ function NewProjectDialog({
               </Field>
             </div>
 
-            <Field label="專案背景說明">
-              <textarea
-                value={background}
-                onChange={(e) => setBackground(e.target.value)}
-                rows={3}
-                maxLength={5000}
-                placeholder="這個專案的來龍去脈、目標、範圍…讓團隊快速了解脈絡"
-                className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
-              />
-            </Field>
-            <Field label="注意事項">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                maxLength={5000}
-                placeholder="執行時要特別留意的事項、雷區、客戶要求…"
-                className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
-              />
-            </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="專案背景說明">
+                <textarea
+                  value={background}
+                  onChange={(e) => setBackground(e.target.value)}
+                  rows={4}
+                  maxLength={5000}
+                  placeholder="這個專案的來龍去脈、目標、範圍…讓團隊快速了解脈絡"
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
+                />
+              </Field>
+              <Field label="注意事項">
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={4}
+                  maxLength={5000}
+                  placeholder="執行時要特別留意的事項、雷區、客戶要求…"
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
+                />
+              </Field>
+            </div>
           </div>
 
           <div className="px-6 py-3 border-t border-rule flex items-center justify-end gap-2">
