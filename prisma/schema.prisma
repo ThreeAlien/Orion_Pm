@@ -141,6 +141,10 @@ model Project {
   // 業務名稱
   salesName    String?
 
+  // 專案背景說明 / 注意事項（業主自填的長文字，給團隊了解脈絡）
+  background   String?
+  notes        String?
+
   // 檔案統籌表：[{ label, url }] 連結清單，業主自填、快速點開檔案位置
   fileLinks    Json   @default("[]")
 

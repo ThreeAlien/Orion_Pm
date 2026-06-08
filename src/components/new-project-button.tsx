@@ -72,6 +72,8 @@ function NewProjectDialog({
   const [brandName, setBrandName] = useState("");
   const [category, setCategory] = useState("");
   const [salesName, setSalesName] = useState("");
+  const [background, setBackground] = useState("");
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -87,6 +89,8 @@ function NewProjectDialog({
       setBrandName("");
       setCategory("");
       setSalesName("");
+      setBackground("");
+      setNotes("");
       setSaving(false);
     }
   }, [open, users, currentUserId]);
@@ -117,6 +121,8 @@ function NewProjectDialog({
         brandName: brandName || null,
         category: category || null,
         salesName: salesName || null,
+        background: background || null,
+        notes: notes || null,
       });
       setSaving(false);
       router.refresh();
@@ -306,6 +312,27 @@ function NewProjectDialog({
                 />
               </Field>
             </div>
+
+            <Field label="專案背景說明">
+              <textarea
+                value={background}
+                onChange={(e) => setBackground(e.target.value)}
+                rows={3}
+                maxLength={5000}
+                placeholder="這個專案的來龍去脈、目標、範圍…讓團隊快速了解脈絡"
+                className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
+              />
+            </Field>
+            <Field label="注意事項">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                maxLength={5000}
+                placeholder="執行時要特別留意的事項、雷區、客戶要求…"
+                className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
+              />
+            </Field>
           </div>
 
           <div className="px-6 py-3 border-t border-rule flex items-center justify-end gap-2">

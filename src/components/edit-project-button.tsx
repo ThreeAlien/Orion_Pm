@@ -97,6 +97,8 @@ function EditProjectDialog({
   const [brandName, setBrandName] = useState(project.brandName ?? "");
   const [category, setCategory] = useState(project.category ?? "");
   const [salesName, setSalesName] = useState(project.salesName ?? "");
+  const [background, setBackground] = useState(project.background ?? "");
+  const [notes, setNotes] = useState(project.notes ?? "");
   const [fileLinks, setFileLinks] = useState<{ label: string; url: string }[]>(
     project.fileLinks ?? []
   );
@@ -122,6 +124,8 @@ function EditProjectDialog({
       setBrandName(project.brandName ?? "");
       setCategory(project.category ?? "");
       setSalesName(project.salesName ?? "");
+      setBackground(project.background ?? "");
+      setNotes(project.notes ?? "");
       setFileLinks(project.fileLinks ?? []);
       setLinksOpen((project.fileLinks?.length ?? 0) > 0);
       setSaving(false);
@@ -157,6 +161,8 @@ function EditProjectDialog({
         brandName: brandName || null,
         category: category || null,
         salesName: salesName || null,
+        background: background || null,
+        notes: notes || null,
         fileLinks,
       });
       setSaving(false);
@@ -371,6 +377,27 @@ function EditProjectDialog({
                 />
               </Field>
             </div>
+
+            <Field label="專案背景說明">
+              <textarea
+                value={background}
+                onChange={(e) => setBackground(e.target.value)}
+                rows={3}
+                maxLength={5000}
+                placeholder="這個專案的來龍去脈、目標、範圍…讓團隊快速了解脈絡"
+                className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
+              />
+            </Field>
+            <Field label="注意事項">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                maxLength={5000}
+                placeholder="執行時要特別留意的事項、雷區、客戶要求…"
+                className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:border-blue focus:bg-surface"
+              />
+            </Field>
 
             {/* 檔案統籌表：可收合的連結清單 */}
             <div className="border border-rule rounded-lg overflow-hidden">

@@ -1657,6 +1657,7 @@ function LinkSection({ taskId }: { taskId: string }) {
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [peekId, setPeekId] = useState<string | null>(null);
+  const [projFilter, setProjFilter] = useState(""); // "" = 全部專案；"__none__" = 無專案
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -1682,13 +1683,31 @@ function LinkSection({ taskId }: { taskId: string }) {
   async function openPicker() {
     setPicking(true);
     setError(null);
+    setProjFilter("");
     setCandidates(await getLinkableTasks(taskId));
   }
 
   const linkedIds = new Set(links.map((l) => l.id));
   const q = query.trim().toLowerCase();
+  // 候選卡片的專案清單（給「依專案篩選」下拉用）＋ 是否有未掛專案的卡
+  const projectNames = [
+    ...new Set(
+      candidates
+        .filter((c) => !linkedIds.has(c.id) && c.projectName)
+        .map((c) => c.projectName as string)
+    ),
+  ].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+  const hasNoProject = candidates.some(
+    (c) => !linkedIds.has(c.id) && !c.projectName
+  );
   const filtered = candidates.filter(
-    (c) => !linkedIds.has(c.id) && (!q || c.title.toLowerCase().includes(q))
+    (c) =>
+      !linkedIds.has(c.id) &&
+      (!q || c.title.toLowerCase().includes(q)) &&
+      (!projFilter ||
+        (projFilter === "__none__"
+          ? !c.projectName
+          : c.projectName === projFilter))
   );
 
   function handleAdd(linkedId: string) {
@@ -1749,9 +1768,9 @@ function LinkSection({ taskId }: { taskId: string }) {
                 <span className="flex-1 text-sm truncate group-hover:text-blue">
                   {l.title}
                 </span>
-                {l.teamName && (
-                  <span className="text-[11px] text-text-faint shrink-0">
-                    {l.teamName}
+                {(l.projectName ?? l.teamName) && (
+                  <span className="text-[11px] text-text-faint shrink-0 max-w-[45%] truncate">
+                    {l.projectName ?? l.teamName}
                   </span>
                 )}
               </button>
@@ -1769,21 +1788,41 @@ function LinkSection({ taskId }: { taskId: string }) {
       )}
 
       {picking && (
-        <div className="mt-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setError(null);
-            }}
-            placeholder="搜尋要聯繫的卡片…"
-            className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-          />
-          <div className="mt-1.5 max-h-56 overflow-y-auto rounded-lg border border-rule divide-y divide-rule">
+        <div className="mt-2 space-y-1.5">
+          {/* 篩選列：依專案篩選下拉（有 2 個以上專案、或有「無專案」卡才出現）＋ 關鍵字搜尋 */}
+          <div className="flex gap-1.5">
+            {(projectNames.length > 1 ||
+              (projectNames.length >= 1 && hasNoProject)) && (
+              <select
+                value={projFilter}
+                onChange={(e) => setProjFilter(e.target.value)}
+                title="依專案篩選"
+                className="shrink-0 max-w-[45%] bg-surface-2 border border-rule rounded-lg px-2 py-1.5 text-sm text-text-dim focus:outline-none focus:border-blue cursor-pointer"
+              >
+                <option value="">全部專案</option>
+                {projectNames.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+                {hasNoProject && <option value="__none__">（無專案）</option>}
+              </select>
+            )}
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setError(null);
+              }}
+              placeholder="搜尋要聯繫的卡片…"
+              className="flex-1 min-w-0 bg-surface-2 border border-rule rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto rounded-lg border border-rule divide-y divide-rule">
             {filtered.length === 0 ? (
               <div className="px-3 py-3 text-sm text-text-faint text-center">
-                {q ? "找不到符合的卡片" : "沒有可聯繫的卡片"}
+                {q || projFilter ? "找不到符合的卡片" : "沒有可聯繫的卡片"}
               </div>
             ) : (
               filtered.map((c) => (
@@ -1794,11 +1833,12 @@ function LinkSection({ taskId }: { taskId: string }) {
                   className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 cursor-pointer"
                 >
                   <span className="flex-1 text-sm truncate">{c.title}</span>
-                  {c.teamName && (
-                    <span className="text-[11px] text-text-faint shrink-0">
-                      {c.teamName}
-                    </span>
-                  )}
+                  <span className="text-[11px] text-text-faint shrink-0 max-w-[45%] truncate text-right">
+                    {c.projectName ?? "（無專案）"}
+                    {` · ${
+                      statusOptions.find((s) => s.value === c.status)?.label ?? ""
+                    }`}
+                  </span>
                 </button>
               ))
             )}

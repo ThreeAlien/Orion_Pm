@@ -109,6 +109,31 @@ function DetailHeader({
           style={{ width: `${project.completionRate}%`, background: dot }}
         />
       </div>
+
+      {(project.background || project.notes) && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {project.background && (
+            <div className="bg-surface-2 rounded-lg px-4 py-3">
+              <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
+                專案背景說明
+              </div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-text-dim">
+                {project.background}
+              </p>
+            </div>
+          )}
+          {project.notes && (
+            <div className="bg-orange/[.08] border border-orange/20 rounded-lg px-4 py-3">
+              <div className="text-[12.5px] text-orange font-semibold uppercase tracking-wider mb-1.5">
+                ⚠ 注意事項
+              </div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-text-dim">
+                {project.notes}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
