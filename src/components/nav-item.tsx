@@ -40,7 +40,6 @@ export function NavItem({
         href={href}
         className={cls}
         onClick={onClick}
-        title={collapsed ? label : undefined}
       >
         <span
           className="w-[18px] text-center text-[16px] flex-shrink-0"
