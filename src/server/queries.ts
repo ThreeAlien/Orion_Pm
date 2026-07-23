@@ -185,7 +185,12 @@ export interface ViewProjectDetail {
   customerName: string | null;
   taxId: string | null;
   brandName: string | null;
-  category: string | null;
+  // 客戶需求品項（多選碼陣列）
+  category: string[];
+  // 案件屬性（GENERAL/PROJECT，選填）
+  attribute: string | null;
+  // 案件來源（中文字串，選填）
+  source: string | null;
   salesName: string | null;
   background: string | null;
   notes: string | null;
@@ -223,7 +228,9 @@ export async function fetchProjectDetail(
     customerName: p.customerName ?? null,
     taxId: p.taxId ?? null,
     brandName: p.brandName ?? null,
-    category: p.category ?? null,
+    category: p.category ?? [],
+    attribute: p.attribute ?? null,
+    source: p.source ?? null,
     salesName: p.salesName ?? null,
     background: p.background ?? null,
     notes: p.notes ?? null,
@@ -263,7 +270,9 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
       customerName: p.customerName ?? null,
       taxId: p.taxId ?? null,
       brandName: p.brandName ?? null,
-      category: p.category ?? null,
+      category: p.category ?? [],
+      attribute: p.attribute ?? null,
+      source: p.source ?? null,
       salesName: p.salesName ?? null,
       background: p.background ?? null,
       notes: p.notes ?? null,
@@ -540,7 +549,7 @@ export async function fetchGanttProjects(): Promise<GanttProject[]> {
       totalTasks: total,
       completedTasks: done,
       completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
-      isCompleted: p.status === "DONE",
+      isCompleted: p.status === "CLOSED",
       teamSlug: p.team?.slug ?? null,
     };
   });

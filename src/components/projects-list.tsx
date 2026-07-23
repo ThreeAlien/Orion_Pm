@@ -1,16 +1,19 @@
 // Projects 列表頁 — 卡片 grid
 import type { ViewProjectDetail } from "@/server/queries";
 import type { ProjectStatus, ViewUser, ViewTeam } from "@/lib/data";
-import { resolveProjectColor, projectCategoryLabel } from "@/lib/data";
+import {
+  resolveProjectColor,
+  projectCategoryLabels,
+  projectAttributeLabel,
+} from "@/lib/data";
 import { NewProjectButton } from "./new-project-button";
 import { ArchiveProjectButton } from "./archive-project-button";
 import { EditProjectButton } from "./edit-project-button";
 
 const statusMap: Record<ProjectStatus, { label: string; bg: string; dot: string }> = {
-  PLANNING: { label: "規劃中", bg: "bg-blue/[.12]", dot: "bg-blue" },
-  PAUSED: { label: "暫停", bg: "bg-orange/[.13]", dot: "bg-orange" },
-  IN_PROGRESS: { label: "進行中", bg: "bg-green/[.14]", dot: "bg-green" },
-  DONE: { label: "已完成", bg: "bg-purple/[.13]", dot: "bg-purple" },
+  DEVELOPING: { label: "開發", bg: "bg-blue/[.12]", dot: "bg-blue" },
+  SIGNED: { label: "已簽約執行", bg: "bg-green/[.14]", dot: "bg-green" },
+  CLOSED: { label: "結案", bg: "bg-text-faint/[.12]", dot: "bg-text-faint" },
 };
 
 
@@ -55,7 +58,7 @@ function ProjectCard({
   teams: ViewTeam[];
 }) {
   const status = statusMap[project.status];
-  const isDone = project.status === "DONE";
+  const isDone = project.status === "CLOSED";
 
   return (
     <EditProjectButton project={project} users={users} teams={teams}>
@@ -93,9 +96,17 @@ function ProjectCard({
                 {project.teamName}
               </span>
             )}
-            {projectCategoryLabel(project.category) && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold bg-blue/[.12] text-blue">
-                {projectCategoryLabel(project.category)}
+            {projectCategoryLabels(project.category).map((label, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold bg-blue/[.12] text-blue"
+              >
+                {label}
+              </span>
+            ))}
+            {project.attribute && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold border border-rule text-text-dim">
+                {projectAttributeLabel(project.attribute)}
               </span>
             )}
           </div>
@@ -141,6 +152,7 @@ function ProjectCard({
         )}
         {project.brandName && <Meta label="品牌" value={project.brandName} />}
         {project.salesName && <Meta label="業務" value={project.salesName} />}
+        {project.source && <Meta label="來源" value={project.source} />}
       </div>
     </div>
     </EditProjectButton>

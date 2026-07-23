@@ -200,14 +200,60 @@ export function computeDashboardStats(tasks: ViewTask[]): DashboardStats {
   };
 }
 
-// 專案類型選項（網站 / SEO / 廣告 / 其他）— 下拉選單與顯示共用
+// 客戶需求品項（多選，存英文碼陣列）— 下拉選單與顯示共用
 export const PROJECT_CATEGORIES = [
-  { value: "WEBSITE", label: "網站" },
-  { value: "SEO", label: "SEO" },
-  { value: "AD", label: "廣告" },
-  { value: "OTHER", label: "其他" },
+  { value: "WEBSITE_BUILD", label: "網站建置" },
+  { value: "WEBSITE_PLAN", label: "網站企劃" },
+  { value: "SEO_TW", label: "繁中SEO" },
+  { value: "GOOGLE_ADS", label: "Google Ads" },
+  { value: "META_ADS", label: "Meta廣告" },
+  { value: "CONSULTING", label: "顧問服務" },
+  { value: "SEO_TW_RENEW", label: "續約繁中SEO" },
+  { value: "GOOGLE_ADS_RENEW", label: "續約Google Ads" },
+  { value: "META_ADS_RENEW", label: "續約Meta廣告" },
+  { value: "SERVER_MAINTENANCE", label: "伺服器與系統維護" },
 ] as const;
 
+// 單一碼 → label；未知碼（含已淘汰的 WEBSITE/SEO/AD/OTHER）fallback 顯示原碼，不 crash。
 export function projectCategoryLabel(v?: string | null): string | null {
-  return PROJECT_CATEGORIES.find((c) => c.value === v)?.label ?? null;
+  if (!v) return null;
+  return PROJECT_CATEGORIES.find((c) => c.value === v)?.label ?? v;
 }
+
+// 多值碼陣列 → label 陣列，給多值 chips 顯示用
+export function projectCategoryLabels(codes?: string[] | null): string[] {
+  if (!codes || codes.length === 0) return [];
+  return codes.map((c) => projectCategoryLabel(c) ?? c);
+}
+
+// 案件狀態（3 態）— label + 顏色 token，供表單與顯示共用
+export const PROJECT_STATUS_OPTIONS: {
+  value: ProjectStatus;
+  label: string;
+  bg: string;
+  dot: string;
+}[] = [
+  { value: "DEVELOPING", label: "開發", bg: "bg-blue/[.12]", dot: "bg-blue" },
+  { value: "SIGNED", label: "已簽約執行", bg: "bg-green/[.14]", dot: "bg-green" },
+  { value: "CLOSED", label: "結案", bg: "bg-text-faint/[.12]", dot: "bg-text-faint" },
+];
+
+export function projectStatusMeta(v: ProjectStatus) {
+  return (
+    PROJECT_STATUS_OPTIONS.find((s) => s.value === v) ?? PROJECT_STATUS_OPTIONS[0]
+  );
+}
+
+// 案件屬性（單選）
+export const PROJECT_ATTRIBUTE_OPTIONS = [
+  { value: "GENERAL", label: "一般案件" },
+  { value: "PROJECT", label: "專案" },
+] as const;
+
+export function projectAttributeLabel(v?: string | null): string | null {
+  if (!v) return null;
+  return PROJECT_ATTRIBUTE_OPTIONS.find((a) => a.value === v)?.label ?? v;
+}
+
+// 案件來源 — 預設下拉選項（可自填任意中文字串，不受此清單限制）
+export const PROJECT_SOURCE_PRESETS = ["官網", "轉介", "業務開發"] as const;

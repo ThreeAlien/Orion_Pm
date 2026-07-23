@@ -6,12 +6,19 @@ import { updateProject, archiveProject } from "@/server/actions";
 import {
   NAMED_PROJECT_COLORS,
   resolveProjectColor,
-  PROJECT_CATEGORIES,
   type ViewUser,
   type ViewTeam,
   type ProjectStatus,
 } from "@/lib/data";
 import type { ViewProjectDetail } from "@/server/queries";
+import {
+  AttributeSelect,
+  CategoryMultiSelect,
+  Field,
+  SectionLabel,
+  SourceCombobox,
+  StatusSelect,
+} from "@/components/project-form-fields";
 
 const PRESET_COLORS = [
   { hex: NAMED_PROJECT_COLORS.red, label: "紅" },
@@ -22,13 +29,6 @@ const PRESET_COLORS = [
   { hex: NAMED_PROJECT_COLORS.blue, label: "藍" },
   { hex: NAMED_PROJECT_COLORS.purple, label: "紫" },
   { hex: NAMED_PROJECT_COLORS.pink, label: "粉" },
-];
-
-const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
-  { value: "PLANNING", label: "規劃中" },
-  { value: "IN_PROGRESS", label: "進行中" },
-  { value: "PAUSED", label: "暫停" },
-  { value: "DONE", label: "已完成" },
 ];
 
 export function EditProjectButton({
@@ -95,7 +95,9 @@ function EditProjectDialog({
   const [customerName, setCustomerName] = useState(project.customerName ?? "");
   const [taxId, setTaxId] = useState(project.taxId ?? "");
   const [brandName, setBrandName] = useState(project.brandName ?? "");
-  const [category, setCategory] = useState(project.category ?? "");
+  const [category, setCategory] = useState<string[]>(project.category ?? []);
+  const [attribute, setAttribute] = useState(project.attribute ?? "");
+  const [source, setSource] = useState(project.source ?? "");
   const [salesName, setSalesName] = useState(project.salesName ?? "");
   const [background, setBackground] = useState(project.background ?? "");
   const [notes, setNotes] = useState(project.notes ?? "");
@@ -122,7 +124,9 @@ function EditProjectDialog({
       setCustomerName(project.customerName ?? "");
       setTaxId(project.taxId ?? "");
       setBrandName(project.brandName ?? "");
-      setCategory(project.category ?? "");
+      setCategory(project.category ?? []);
+      setAttribute(project.attribute ?? "");
+      setSource(project.source ?? "");
       setSalesName(project.salesName ?? "");
       setBackground(project.background ?? "");
       setNotes(project.notes ?? "");
@@ -130,7 +134,8 @@ function EditProjectDialog({
       setLinksOpen((project.fileLinks?.length ?? 0) > 0);
       setSaving(false);
     }
-  }, [open, project]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在 open 邊緣或換專案時 reset，勿隨 refresh-loop 重跑而覆蓋編輯中的內容
+  }, [open, project.id]);
 
   // ESC
   useEffect(() => {
@@ -159,7 +164,9 @@ function EditProjectDialog({
         customerName: customerName || null,
         taxId: taxId || null,
         brandName: brandName || null,
-        category: category || null,
+        category,
+        attribute: attribute || null,
+        source: source || null,
         salesName: salesName || null,
         background: background || null,
         notes: notes || null,
@@ -266,19 +273,13 @@ function EditProjectDialog({
               </div>
             </Field>
 
+            <SectionLabel>案件資訊</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="狀態">
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
+              <Field label="案件狀態">
+                <StatusSelect value={status} onChange={setStatus} />
+              </Field>
+              <Field label="案件屬性">
+                <AttributeSelect value={attribute} onChange={setAttribute} />
               </Field>
               <Field label="負責人">
                 <select
@@ -325,36 +326,27 @@ function EditProjectDialog({
               </Field>
             </div>
 
+            <Field label="客戶需求品項">
+              <CategoryMultiSelect value={category} onChange={setCategory} />
+            </Field>
+
+            <SectionLabel>客戶資訊</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="類型">
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-                >
-                  <option value="">（未分類）</option>
-                  {PROJECT_CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="業務名稱">
-                <input
-                  value={salesName}
-                  onChange={(e) => setSalesName(e.target.value)}
-                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-                  placeholder="負責這案的業務"
-                  maxLength={60}
-                />
-              </Field>
               <Field label="客戶名稱">
                 <input
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
                   placeholder="公司全名"
+                  maxLength={120}
+                />
+              </Field>
+              <Field label="品牌名稱">
+                <input
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
+                  placeholder="品牌名稱"
                   maxLength={120}
                 />
               </Field>
@@ -367,17 +359,21 @@ function EditProjectDialog({
                   maxLength={20}
                 />
               </Field>
-              <Field label="品牌名稱">
+              <Field label="業務名稱">
                 <input
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
+                  value={salesName}
+                  onChange={(e) => setSalesName(e.target.value)}
                   className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface"
-                  placeholder="品牌名稱"
-                  maxLength={120}
+                  placeholder="負責這案的業務"
+                  maxLength={60}
                 />
+              </Field>
+              <Field label="案件來源">
+                <SourceCombobox value={source} onChange={setSource} listId="edit-project-source-presets" />
               </Field>
             </div>
 
+            <SectionLabel>備註</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="專案背景說明">
                 <textarea
@@ -518,25 +514,5 @@ function EditProjectDialog({
         </form>
       </div>
     </>
-  );
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <div className="text-[12.5px] text-text-faint font-semibold uppercase tracking-wider mb-1.5">
-        {label}
-        {required && <span className="text-red ml-1">*</span>}
-      </div>
-      {children}
-    </label>
   );
 }

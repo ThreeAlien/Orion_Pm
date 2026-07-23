@@ -18,6 +18,7 @@ import {
   TaskStatus,
   TaskPriority,
   ActivityField,
+  ProjectStatus,
 } from "@/generated/prisma/client";
 
 async function currentUserId(): Promise<string | null> {
@@ -410,10 +411,20 @@ export async function deleteTask(id: string) {
   revalidatePath("/projects");
 }
 
+const PROJECT_STATUSES = [
+  "DEVELOPING",
+  "SIGNED",
+  "CLOSED",
+] as const satisfies readonly ProjectStatus[];
+
+const PROJECT_ATTRIBUTES = ["GENERAL", "PROJECT"] as const;
+
 const CreateProjectSchema = z.object({
   name: z.string().trim().min(1).max(120),
   // 接受任何 hex (#RRGGBB) 或 named token
   color: z.string().min(1).max(40),
+  // 案件狀態；沒傳時 createProject 內預設 DEVELOPING
+  status: z.enum(PROJECT_STATUSES).optional(),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   ownerId: z.string(),
@@ -422,14 +433,16 @@ const CreateProjectSchema = z.object({
   customerName: z.string().trim().max(120).nullable().optional(),
   taxId: z.string().trim().max(20).nullable().optional(),
   brandName: z.string().trim().max(120).nullable().optional(),
-  // 類型 + 業務
-  category: z.string().trim().max(20).nullable().optional(),
+  // 客戶需求品項（多選，存碼陣列）
+  category: z.array(z.string()).max(10).optional(),
+  // 案件屬性（單選碼，選填）
+  attribute: z.enum(PROJECT_ATTRIBUTES).nullable().optional(),
+  // 案件來源（中文字串，可自填，選填）
+  source: z.string().trim().max(100).nullable().optional(),
   salesName: z.string().trim().max(60).nullable().optional(),
   background: z.string().trim().max(5000).nullable().optional(),
   notes: z.string().trim().max(5000).nullable().optional(),
 });
-
-const PROJECT_STATUSES = ["PLANNING", "PAUSED", "IN_PROGRESS", "DONE"] as const;
 
 const UpdateProjectSchema = z.object({
   id: z.string(),
@@ -443,7 +456,9 @@ const UpdateProjectSchema = z.object({
   customerName: z.string().trim().max(120).nullable().optional(),
   taxId: z.string().trim().max(20).nullable().optional(),
   brandName: z.string().trim().max(120).nullable().optional(),
-  category: z.string().trim().max(20).nullable().optional(),
+  category: z.array(z.string()).max(10).optional(),
+  attribute: z.enum(PROJECT_ATTRIBUTES).nullable().optional(),
+  source: z.string().trim().max(100).nullable().optional(),
   salesName: z.string().trim().max(60).nullable().optional(),
   background: z.string().trim().max(5000).nullable().optional(),
   notes: z.string().trim().max(5000).nullable().optional(),
@@ -473,7 +488,9 @@ export async function updateProject(raw: unknown) {
       customerName: data.customerName?.trim() || null,
       taxId: data.taxId?.trim() || null,
       brandName: data.brandName?.trim() || null,
-      category: data.category?.trim() || null,
+      category: data.category ?? [],
+      attribute: data.attribute ?? null,
+      source: data.source?.trim() || null,
       salesName: data.salesName?.trim() || null,
       background: data.background?.trim() || null,
       notes: data.notes?.trim() || null,
@@ -562,11 +579,13 @@ export async function createProject(raw: unknown) {
       customerName: data.customerName?.trim() || null,
       taxId: data.taxId?.trim() || null,
       brandName: data.brandName?.trim() || null,
-      category: data.category?.trim() || null,
+      category: data.category ?? [],
+      attribute: data.attribute ?? null,
+      source: data.source?.trim() || null,
       salesName: data.salesName?.trim() || null,
       background: data.background?.trim() || null,
       notes: data.notes?.trim() || null,
-      status: "PLANNING",
+      status: data.status ?? "DEVELOPING",
     },
   });
   revalidatePath("/");

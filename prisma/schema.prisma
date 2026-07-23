@@ -29,10 +29,9 @@ enum TaskPriority {
 }
 
 enum ProjectStatus {
-  PLANNING
-  PAUSED
-  IN_PROGRESS
-  DONE
+  DEVELOPING   // 開發
+  SIGNED       // 已簽約執行
+  CLOSED       // 結案
 }
 
 enum DocType {
@@ -127,7 +126,7 @@ model Project {
   description String?
   /// 顯示用色票 — red / green / orange / purple / blue / pink / teal
   color       String            @default("blue")
-  status      ProjectStatus     @default(PLANNING)
+  status      ProjectStatus     @default(DEVELOPING)
   startDate   DateTime?
   endDate     DateTime?
   fileUrl     String?
@@ -136,8 +135,12 @@ model Project {
   customerName String?
   taxId        String?
   brandName    String?
-  // 專案類型：WEBSITE / SEO / AD / OTHER（app 層管選項，不用 enum 免 migration 綁死）
-  category     String?
+  // 客戶需求品項（可多選）：app 層管選項，不用 enum 免 migration 綁死。碼→中文 label 在 data.ts
+  category     String[]          @default([])
+  // 案件屬性：GENERAL 一般案件 / PROJECT 專案（app 層管選項）
+  attribute    String?
+  // 案件來源：官網 / 轉介 / 業務開發 / 其他（可自填，存中文字串）
+  source       String?
   // 業務名稱
   salesName    String?
 

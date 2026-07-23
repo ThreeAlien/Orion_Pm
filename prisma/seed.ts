@@ -125,7 +125,7 @@ async function main() {
         name: p.name,
         color: p.color,
         ownerId: weiderId,
-        status: p.id === "p-subscription" ? "DONE" : "IN_PROGRESS",
+        status: p.id === "p-subscription" ? "CLOSED" : "SIGNED",
         startDate: day(-30),
         endDate: p.endIn === null ? null : day(p.endIn),
       },
