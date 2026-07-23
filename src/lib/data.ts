@@ -63,6 +63,8 @@ export interface ViewProject {
   customerName?: string | null;
   taxId?: string | null;
   brandName?: string | null;
+  // 客戶需求品項（多選碼陣列）＝承接範圍；任務品項只能從其中單選（父子約束）
+  category: string[];
 }
 
 export interface ViewTeam {
@@ -97,6 +99,8 @@ export interface ViewTask {
   status: TaskStatus;
   priority: TaskPriority;
   projectId?: string | null;
+  // 客戶需求品項（單選碼）＝執行其中哪一個；須為所屬專案 category 之一，無專案則 null
+  category: string | null;
   /// 主負責人（denormalized，給 gantt/list 等單一顯示用）
   assignee?: ViewUser;
   /// 完整負責人清單（多選）

@@ -141,6 +141,7 @@ export async function fetchProjects(): Promise<ViewProject[]> {
     customerName: p.customerName ?? null,
     taxId: p.taxId ?? null,
     brandName: p.brandName ?? null,
+    category: p.category ?? [],
   }));
 }
 
@@ -526,6 +527,8 @@ export interface GanttProject {
   completionRate: number;
   isCompleted: boolean;
   teamSlug: string | null;
+  // 客戶需求品項（多選碼陣列）；餵給甘特頁內的 TaskDrawer 做任務品項單選約束
+  category: string[];
 }
 
 export async function fetchGanttProjects(): Promise<GanttProject[]> {
@@ -551,6 +554,7 @@ export async function fetchGanttProjects(): Promise<GanttProject[]> {
       completionRate: total === 0 ? 0 : Math.round((done / total) * 100),
       isCompleted: p.status === "CLOSED",
       teamSlug: p.team?.slug ?? null,
+      category: p.category ?? [],
     };
   });
 }
@@ -582,6 +586,7 @@ export async function fetchTasks(): Promise<ViewTask[]> {
       status: t.status,
       priority: t.priority,
       projectId: t.projectId,
+      category: t.category ?? null,
       assignee: t.assignee
         ? toViewUser(t.assignee.name, t.assignee.id, t.assignee.avatarColor)
         : undefined,

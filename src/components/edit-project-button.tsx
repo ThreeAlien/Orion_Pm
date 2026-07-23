@@ -70,7 +70,7 @@ export function EditProjectButton({
   );
 }
 
-function EditProjectDialog({
+export function EditProjectDialog({
   open,
   onClose,
   project,
@@ -137,14 +137,18 @@ function EditProjectDialog({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在 open 邊緣或換專案時 reset，勿隨 refresh-loop 重跑而覆蓋編輯中的內容
   }, [open, project.id]);
 
-  // ESC
+  // ESC — 攔在 capture 階段 + stopPropagation，避免外層（如 TaskDrawer）的
+  // ESC 監聽也一起關掉；不論外層是誰、有沒有自己的 ESC handler 都擋得住。
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
     };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
+    window.addEventListener("keydown", h, true);
+    return () => window.removeEventListener("keydown", h, true);
   }, [open, onClose]);
 
   function handleSubmit(e: React.FormEvent) {

@@ -90,6 +90,7 @@ export function GanttView({
     name: p.name,
     color: p.color,
     taskCount: p.totalTasks,
+    category: p.category,
   }));
 
   // 同步 props

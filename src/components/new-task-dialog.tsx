@@ -4,12 +4,13 @@ import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createTask } from "@/server/actions";
 import { AssigneePicker } from "./assignee-picker";
-import type {
-  ViewProject,
-  ViewUser,
-  ViewTeam,
-  TaskStatus,
-  TaskPriority,
+import {
+  projectCategoryLabel,
+  type ViewProject,
+  type ViewUser,
+  type ViewTeam,
+  type TaskStatus,
+  type TaskPriority,
 } from "@/lib/data";
 
 const statuses: { value: TaskStatus; label: string; color: string }[] = [
@@ -52,6 +53,7 @@ export function NewTaskDialog({
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [projectId, setProjectId] = useState<string>(defaultProjectId ?? "");
+  const [category, setCategory] = useState<string>("");
   const [teamId, setTeamId] = useState<string>(defaultTeamId ?? "");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("");
@@ -68,6 +70,7 @@ export function NewTaskDialog({
       setStatus(defaultStatus);
       setPriority("MEDIUM");
       setProjectId(defaultProjectId ?? "");
+      setCategory("");
       setTeamId(defaultTeamId ?? "");
       setAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setStartDate("");
@@ -86,6 +89,18 @@ export function NewTaskDialog({
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
+  // 目前所選專案的品項（父子約束：任務品項只能從其中單選）
+  const selectedProjectCategories = projectId
+    ? projects.find((p) => p.id === projectId)?.category ?? []
+    : [];
+
+  // 換專案：現值不在新專案品項內 → 自動清空
+  function handleProjectChange(v: string) {
+    setProjectId(v);
+    const cats = v ? projects.find((p) => p.id === v)?.category ?? [] : [];
+    if (!cats.includes(category)) setCategory("");
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -98,6 +113,7 @@ export function NewTaskDialog({
         projectId: projectId || null,
         // 有選專案就跟著專案的團隊走，不存直屬 team；沒專案才用選的團隊歸隊
         teamId: projectId ? null : teamId || null,
+        category: category || null,
         assigneeIds,
         startDate: startDate || null,
         dueDate: dueDate || null,
@@ -189,7 +205,7 @@ export function NewTaskDialog({
               <Field label="專案">
                 <Select
                   value={projectId}
-                  onChange={setProjectId}
+                  onChange={handleProjectChange}
                   options={[
                     { value: "", label: "（無）" },
                     ...projects.map((p) => ({
@@ -198,6 +214,30 @@ export function NewTaskDialog({
                     })),
                   ]}
                 />
+              </Field>
+              <Field label="客戶需求品項">
+                <Select
+                  value={category}
+                  onChange={setCategory}
+                  disabled={selectedProjectCategories.length === 0}
+                  options={[
+                    { value: "", label: "（不指定）" },
+                    ...selectedProjectCategories.map((c) => ({
+                      value: c,
+                      label: projectCategoryLabel(c) ?? c,
+                    })),
+                  ]}
+                />
+                {!projectId && (
+                  <div className="text-[12px] text-text-faint mt-1">
+                    先選擇專案
+                  </div>
+                )}
+                {projectId && selectedProjectCategories.length === 0 && (
+                  <div className="text-[12px] text-text-faint mt-1">
+                    此專案未設定需求品項
+                  </div>
+                )}
               </Field>
               {teams.length > 0 && (
                 <Field label={projectId ? "團隊（跟著專案）" : "團隊"}>

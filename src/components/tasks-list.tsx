@@ -13,6 +13,7 @@ import {
   kanbanColumns,
   projectChipStyle,
   resolveProjectColor,
+  projectCategoryLabel,
 } from "@/lib/data";
 import { ViewToggle } from "./view-toggle";
 import { TaskDrawer } from "./kanban-board";
@@ -192,7 +193,7 @@ export function TasksList({
       <div className="flex-1 overflow-auto -mx-6 px-6 mt-4">
         <div className="min-w-[900px]">
           {/* Table head — 點 column 切換 sort */}
-          <div className="grid grid-cols-[40px_1fr_140px_120px_100px_120px_110px] gap-3 px-3 pb-2 text-[12.5px] text-text-faint font-semibold uppercase tracking-wider border-b border-rule">
+          <div className="grid grid-cols-[40px_1fr_140px_100px_120px_100px_120px_110px] gap-3 px-3 pb-2 text-[12.5px] text-text-faint font-semibold uppercase tracking-wider border-b border-rule">
             <div>#</div>
             <SortableHead
               label="任務"
@@ -206,6 +207,7 @@ export function TasksList({
               dir={sortDir}
               onClick={() => clickHeader("project")}
             />
+            <div>品項</div>
             <SortableHead
               label="狀態"
               active={sortKey === "status"}
@@ -356,7 +358,7 @@ function Row({
   return (
     <div
       onClick={onOpen}
-      className="grid grid-cols-[40px_1fr_140px_120px_100px_120px_110px] gap-3 px-3 h-12 items-center text-sm border-b border-rule hover:bg-rule-soft cursor-pointer"
+      className="grid grid-cols-[40px_1fr_140px_100px_120px_100px_120px_110px] gap-3 px-3 h-12 items-center text-sm border-b border-rule hover:bg-rule-soft cursor-pointer"
     >
       <div className="text-text-faint tabular text-xs">
         {String(idx).padStart(3, "0")}
@@ -381,6 +383,13 @@ function Row({
           </span>
         ) : (
           <span className="text-text-faint text-xs">—</span>
+        )}
+      </div>
+      <div>
+        {task.category && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold bg-blue/[.12] text-blue">
+            {projectCategoryLabel(task.category)}
+          </span>
         )}
       </div>
       <div>

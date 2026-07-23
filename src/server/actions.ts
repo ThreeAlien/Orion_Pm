@@ -13,6 +13,9 @@ import {
   fetchTaskLinks,
   fetchLinkableTasks,
   fetchTaskPeek,
+  fetchProjectDetail,
+  fetchUsers,
+  fetchTeams,
 } from "@/server/queries";
 import {
   TaskStatus,
@@ -173,6 +176,8 @@ const CreateTaskSchema = z.object({
   assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().optional().nullable(),
   dueDate: z.string().optional().nullable(),
+  // 客戶需求品項（單選碼）；伺服器端再驗證是否為所屬專案已選品項之一
+  category: z.string().trim().max(60).nullable().optional(),
 });
 
 // 統一算負責人清單：優先 assigneeIds，否則退回單一 assigneeId
@@ -197,6 +202,14 @@ export async function createTask(
   }
   const data = parsed.data;
 
+  const categoryResult = await resolveTaskCategory(
+    data.projectId || null,
+    data.category
+  );
+  if (!categoryResult.ok) {
+    return { ok: false, error: categoryResult.error };
+  }
+
   // 算 position：放該 status 最末
   const last = await db.task.findFirst({
     where: { status: data.status, archived: false },
@@ -214,6 +227,7 @@ export async function createTask(
       status: data.status,
       priority: data.priority,
       projectId: data.projectId || null,
+      category: categoryResult.value,
       // 有專案時 teamId 留著也無妨（顯示以專案團隊為準）；沒專案才靠它歸隊
       teamId: data.teamId || null,
       assigneeId: assigneeIds[0] ?? null, // 主負責人 = 第一位
@@ -279,10 +293,41 @@ const UpdateTaskSchema = z.object({
   assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
+  category: z.string().trim().max(60).nullable().optional(),
 });
 
-export async function updateTask(raw: unknown) {
+// 任務品項 ⊆ 所屬專案品項（父子約束）。無 projectId → 強制 null；
+// 有 projectId → 傳入品項須為該專案 category 陣列之一，否則拒絕（防髒資料，不靜默改寫）。
+async function resolveTaskCategory(
+  projectId: string | null,
+  category: string | null | undefined
+): Promise<{ ok: true; value: string | null } | { ok: false; error: string }> {
+  if (!projectId) return { ok: true, value: null };
+  if (!category) return { ok: true, value: null };
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: { category: true },
+  });
+  if (!project) return { ok: true, value: null }; // 專案不存在（邊界情況）視同無專案
+  if (!project.category.includes(category)) {
+    return { ok: false, error: "所選客戶需求品項不屬於此專案的承接範圍" };
+  }
+  return { ok: true, value: category };
+}
+
+export type UpdateTaskResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function updateTask(raw: unknown): Promise<UpdateTaskResult> {
   const data = UpdateTaskSchema.parse(raw);
+  const categoryResult = await resolveTaskCategory(
+    data.projectId || null,
+    data.category
+  );
+  if (!categoryResult.ok) {
+    return { ok: false, error: categoryResult.error };
+  }
   const assigneeIds = resolveAssigneeIds(data);
   const newAssigneeId = assigneeIds[0] ?? null; // 主負責人 = 第一位
   const old = await db.task.findUnique({
@@ -305,6 +350,7 @@ export async function updateTask(raw: unknown) {
       status: data.status,
       priority: data.priority,
       projectId: data.projectId || null,
+      category: categoryResult.value,
       assigneeId: newAssigneeId,
       // 同步多負責人：先清掉舊的再建新的
       assignees: {
@@ -355,6 +401,7 @@ export async function updateTask(raw: unknown) {
   revalidatePath("/");
   revalidatePath("/tasks");
   revalidatePath("/projects");
+  return { ok: true };
 }
 
 const UpdateTaskDueDateSchema = z.object({
@@ -519,6 +566,17 @@ export async function archiveProject(id: string) {
   revalidatePath("/projects");
   revalidatePath("/gantt");
   revalidatePath("/archive");
+}
+
+// 給 TaskDrawer「開啟專案設定」按鈕用：現抓一份完整的專案編輯資料
+// （復用 fetchProjectDetail + fetchUsers/fetchTeams，不重寫查詢邏輯）
+export async function getProjectEditData(projectId: string) {
+  const uid = await currentUserId();
+  if (!uid) return null;
+  const project = await fetchProjectDetail(projectId);
+  if (!project) return null;
+  const [users, teams] = await Promise.all([fetchUsers(), fetchTeams()]);
+  return { project, users, teams };
 }
 
 // ==== 還原（從封存區）====

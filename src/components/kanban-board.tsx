@@ -49,16 +49,19 @@ import {
   removeTaskLink,
   getTaskPeek,
   markTaskNotificationsRead,
+  getProjectEditData,
 } from "@/server/actions";
-import type { ViewTaskLink, ViewTaskPeek } from "@/server/queries";
+import type { ViewTaskLink, ViewTaskPeek, ViewProjectDetail } from "@/server/queries";
 import { RichTextEditor, isRichTextEmpty } from "./rich-text-editor";
 import { RichTextView, htmlToPlainText } from "./rich-text-view";
 import { AssigneePicker } from "./assignee-picker";
+import { EditProjectDialog } from "./edit-project-button";
 import {
   kanbanColumns,
   type ViewTask,
   type ViewProject,
   type ViewUser,
+  type ViewTeam,
   type ProjectColor,
   type TaskStatus,
   type TaskPriority,
@@ -68,6 +71,7 @@ import {
   type ViewChecklistItem,
   resolveProjectColor,
   projectChipStyle,
+  projectCategoryLabel,
 } from "@/lib/data";
 
 const barColorMap = {
@@ -628,6 +632,11 @@ function TaskCardInner({
           </span>
         )}
         {project && <ProjectTag project={project} />}
+        {task.category && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-blue/[.12] text-blue">
+            {projectCategoryLabel(task.category)}
+          </span>
+        )}
         {task.priority === "HIGH" && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-red/[.12] text-red">
             🔥 高
@@ -715,10 +724,21 @@ export function TaskDrawer({
   const [status, setStatus] = useState<TaskStatus>("TODO");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [projectId, setProjectId] = useState<string>("");
+  const [category, setCategory] = useState<string>("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // 專案編輯 dialog（點「開啟專案設定」現抓資料再開，不常駐 fetch）
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [projectDialogLoading, setProjectDialogLoading] = useState(false);
+  const [projectEditData, setProjectEditData] = useState<{
+    project: ViewProjectDetail;
+    users: ViewUser[];
+    teams: ViewTeam[];
+  } | null>(null);
 
   // 留言 + 活動軌跡時間軸
   const [timeline, setTimeline] = useState<ViewTimelineItem[]>([]);
@@ -736,6 +756,7 @@ export function TaskDrawer({
       setStatus(task.status);
       setPriority(task.priority);
       setProjectId(task.projectId ?? "");
+      setCategory(task.category ?? "");
       setAssigneeIds(
         task.assignees && task.assignees.length > 0
           ? task.assignees.map((a) => a.id)
@@ -745,8 +766,26 @@ export function TaskDrawer({
       );
       setStartDate(task.startDateIso ? task.startDateIso.slice(0, 10) : "");
       setDueDate(task.dueDateIso ? task.dueDateIso.slice(0, 10) : "");
+      setSaveError(null);
     }
   }, [task]);
+
+  // 換任務 / 關 drawer 時，跟著關掉可能還開著的專案 dialog（它是獨立 fixed
+  // overlay，不會因為 task 變 null 自動消失）
+  useEffect(() => {
+    setProjectDialogOpen(false);
+  }, [task?.id]);
+
+  async function handleOpenProjectDialog() {
+    if (!projectId || projectDialogLoading) return;
+    setProjectDialogLoading(true);
+    const data = await getProjectEditData(projectId);
+    setProjectDialogLoading(false);
+    if (data) {
+      setProjectEditData(data);
+      setProjectDialogOpen(true);
+    }
+  }
 
   // 開 drawer / 切換任務時載入時間軸
   useEffect(() => {
@@ -835,19 +874,25 @@ export function TaskDrawer({
   function handleSave() {
     if (!task) return;
     setSaving(true);
+    setSaveError(null);
     startTransition(async () => {
-      await updateTask({
+      const result = await updateTask({
         id: task.id,
         title,
         description: isRichTextEmpty(description) ? null : description,
         status,
         priority,
         projectId: projectId || null,
+        category: category || null,
         assigneeIds,
         startDate: startDate || null,
         dueDate: dueDate || null,
       });
       setSaving(false);
+      if (!result.ok) {
+        setSaveError(result.error);
+        return;
+      }
       router.refresh();
       onClose();
     });
@@ -865,6 +910,7 @@ export function TaskDrawer({
   }
 
   return (
+    <>
     <div
       onClick={onClose}
       className={`fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${
@@ -959,15 +1005,72 @@ export function TaskDrawer({
                   />
                 </DrawerField>
                 <DrawerField label="專案">
-                  <DrawerSelect
-                    value={projectId}
-                    onChange={setProjectId}
-                    options={[
-                      { value: "", label: "（無）" },
-                      ...projects.map((p) => ({ value: p.id, label: p.name })),
-                    ]}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1 min-w-0">
+                      <DrawerSelect
+                        value={projectId}
+                        onChange={(v) => {
+                          setProjectId(v);
+                          // 換專案：現值不在新專案品項內 → 自動清空
+                          const cats = v
+                            ? projects.find((p) => p.id === v)?.category ?? []
+                            : [];
+                          if (!cats.includes(category)) setCategory("");
+                        }}
+                        options={[
+                          { value: "", label: "（無）" },
+                          ...projects.map((p) => ({ value: p.id, label: p.name })),
+                        ]}
+                      />
+                    </div>
+                    {projectId && (
+                      <button
+                        type="button"
+                        onClick={handleOpenProjectDialog}
+                        disabled={projectDialogLoading}
+                        title="開啟專案設定"
+                        className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg bg-surface-2 border border-rule hover:bg-rule-soft text-text-dim disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {projectDialogLoading ? (
+                          <span className="w-3.5 h-3.5 rounded-full border-2 border-text-faint border-t-transparent animate-spin" />
+                        ) : (
+                          "↗"
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </DrawerField>
+                {(() => {
+                  const selectedCategories = projectId
+                    ? projects.find((p) => p.id === projectId)?.category ?? []
+                    : [];
+                  return (
+                    <DrawerField label="客戶需求品項">
+                      <DrawerSelect
+                        value={category}
+                        onChange={setCategory}
+                        disabled={selectedCategories.length === 0}
+                        options={[
+                          { value: "", label: "（不指定）" },
+                          ...selectedCategories.map((c) => ({
+                            value: c,
+                            label: projectCategoryLabel(c) ?? c,
+                          })),
+                        ]}
+                      />
+                      {!projectId && (
+                        <div className="text-[12px] text-text-faint mt-1">
+                          先選擇專案
+                        </div>
+                      )}
+                      {projectId && selectedCategories.length === 0 && (
+                        <div className="text-[12px] text-text-faint mt-1">
+                          此專案未設定需求品項
+                        </div>
+                      )}
+                    </DrawerField>
+                  );
+                })()}
                 <div className="sm:col-span-2">
                   <DrawerField label="負責人（可多選）" as="div">
                     <AssigneePicker
@@ -1141,6 +1244,9 @@ export function TaskDrawer({
                 封存
               </button>
               <div className="flex-1" />
+              {saveError && (
+                <span className="text-xs text-red">{saveError}</span>
+              )}
               <button
                 onClick={onClose}
                 className="px-4 py-2 bg-rule-soft hover:bg-rule rounded-lg font-medium text-sm text-text-dim cursor-pointer"
@@ -1159,6 +1265,16 @@ export function TaskDrawer({
         )}
       </div>
     </div>
+    {projectEditData && (
+      <EditProjectDialog
+        open={projectDialogOpen}
+        onClose={() => setProjectDialogOpen(false)}
+        project={projectEditData.project}
+        users={projectEditData.users}
+        teams={projectEditData.teams}
+      />
+    )}
+    </>
   );
 }
 
@@ -1489,16 +1605,19 @@ function DrawerSelect({
   value,
   onChange,
   options,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  disabled?: boolean;
 }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface appearance-none pr-8 bg-no-repeat bg-[right_10px_center]"
+      disabled={disabled}
+      className="w-full bg-surface-2 border border-rule rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue focus:bg-surface appearance-none pr-8 bg-no-repeat bg-[right_10px_center] disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
         backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236E6E73' d='M5 6L0 0h10z'/%3E%3C/svg%3E")`,
         backgroundSize: "10px",
