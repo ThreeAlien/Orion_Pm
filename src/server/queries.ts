@@ -182,6 +182,7 @@ export interface ViewProjectDetail {
   ownerId: string;
   ownerName: string;
   teamId: string | null;
+  teamSlug: string | null;
   teamName: string | null;
   customerName: string | null;
   taxId: string | null;
@@ -208,7 +209,7 @@ export async function fetchProjectDetail(
     where: { id, archived: false },
     include: {
       owner: { select: { id: true, name: true } },
-      team: { select: { id: true, name: true } },
+      team: { select: { id: true, slug: true, name: true } },
       tasks: { where: { archived: false }, select: { status: true } },
     },
   });
@@ -225,6 +226,7 @@ export async function fetchProjectDetail(
     ownerId: p.ownerId,
     ownerName: p.owner.name,
     teamId: p.team?.id ?? null,
+    teamSlug: p.team?.slug ?? null,
     teamName: p.team?.name ?? null,
     customerName: p.customerName ?? null,
     taxId: p.taxId ?? null,
@@ -250,7 +252,7 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
     orderBy: { createdAt: "asc" },
     include: {
       owner: { select: { id: true, name: true } },
-      team: { select: { id: true, name: true } },
+      team: { select: { id: true, slug: true, name: true } },
       tasks: { where: { archived: false }, select: { status: true } },
     },
   });
@@ -267,6 +269,7 @@ export async function fetchProjectDetails(): Promise<ViewProjectDetail[]> {
       ownerId: p.ownerId,
       ownerName: p.owner.name,
       teamId: p.team?.id ?? null,
+      teamSlug: p.team?.slug ?? null,
       teamName: p.team?.name ?? null,
       customerName: p.customerName ?? null,
       taxId: p.taxId ?? null,
