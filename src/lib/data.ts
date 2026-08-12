@@ -99,8 +99,8 @@ export interface ViewTask {
   status: TaskStatus;
   priority: TaskPriority;
   projectId?: string | null;
-  // 客戶需求品項（單選碼）＝執行其中哪一個；須為所屬專案 category 之一，無專案則 null
-  category: string | null;
+  // 客戶需求品項（多選碼）＝執行其中哪幾項；須為所屬專案 category 的子集，無專案則空陣列
+  category: string[];
   /// 主負責人（denormalized，給 gantt/list 等單一顯示用）
   assignee?: ViewUser;
   /// 完整負責人清單（多選）
@@ -211,6 +211,8 @@ export const PROJECT_CATEGORIES = [
   { value: "SEO_TW", label: "繁中SEO" },
   { value: "GOOGLE_ADS", label: "Google Ads" },
   { value: "META_ADS", label: "Meta廣告" },
+  // 未分平台的廣告（案件進度表沿用的通稱）
+  { value: "AD", label: "AD" },
   { value: "CONSULTING", label: "顧問服務" },
   { value: "SEO_TW_RENEW", label: "續約繁中SEO" },
   { value: "GOOGLE_ADS_RENEW", label: "續約Google Ads" },

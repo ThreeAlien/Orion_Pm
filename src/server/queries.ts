@@ -589,7 +589,7 @@ export async function fetchTasks(): Promise<ViewTask[]> {
       status: t.status,
       priority: t.priority,
       projectId: t.projectId,
-      category: t.category ?? null,
+      category: t.category ?? [],
       assignee: t.assignee
         ? toViewUser(t.assignee.name, t.assignee.id, t.assignee.avatarColor)
         : undefined,

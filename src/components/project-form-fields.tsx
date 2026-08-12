@@ -121,13 +121,16 @@ export function SourceCombobox({
   );
 }
 
-// 客戶需求品項 — 10 選多選，已選顯示成可移除 chips（互動參考 assignee-picker.tsx）
+// 客戶需求品項 — 多選，已選顯示成可移除 chips（互動參考 assignee-picker.tsx）。
+// 專案層不傳 options＝全碼表可選；任務層傳入所屬專案的品項，落實「任務品項 ⊆ 專案品項」。
 export function CategoryMultiSelect({
   value,
   onChange,
+  options = PROJECT_CATEGORIES,
 }: {
   value: string[];
   onChange: (v: string[]) => void;
+  options?: readonly { value: string; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -148,7 +151,7 @@ export function CategoryMultiSelect({
     else onChange([...value, code]);
   }
 
-  const candidates = PROJECT_CATEGORIES.filter((c) => !value.includes(c.value));
+  const candidates = options.filter((c) => !value.includes(c.value));
 
   return (
     <div ref={rootRef} className="space-y-2">
@@ -157,7 +160,7 @@ export function CategoryMultiSelect({
           <span className="text-sm text-text-faint">未選擇</span>
         )}
         {value.map((code) => {
-          const opt = PROJECT_CATEGORIES.find((c) => c.value === code);
+          const opt = options.find((c) => c.value === code);
           return (
             <span
               key={code}
@@ -191,7 +194,7 @@ export function CategoryMultiSelect({
           <div className="max-h-44 overflow-y-auto">
             {candidates.length === 0 ? (
               <div className="px-3 py-3 text-sm text-text-faint text-center">
-                已全選
+                {options.length === 0 ? "無可選品項" : "已全選"}
               </div>
             ) : (
               candidates.map((c) => (

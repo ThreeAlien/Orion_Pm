@@ -176,8 +176,8 @@ const CreateTaskSchema = z.object({
   assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().optional().nullable(),
   dueDate: z.string().optional().nullable(),
-  // 客戶需求品項（單選碼）；伺服器端再驗證是否為所屬專案已選品項之一
-  category: z.string().trim().max(60).nullable().optional(),
+  // 客戶需求品項（多選碼）；伺服器端再驗證是否落在所屬專案已選品項內
+  category: z.array(z.string().trim().max(60)).max(10).nullable().optional(),
 });
 
 // 統一算負責人清單：優先 assigneeIds，否則退回單一 assigneeId
@@ -293,26 +293,28 @@ const UpdateTaskSchema = z.object({
   assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
-  category: z.string().trim().max(60).nullable().optional(),
+  category: z.array(z.string().trim().max(60)).max(10).nullable().optional(),
 });
 
-// 任務品項 ⊆ 所屬專案品項（父子約束）。無 projectId → 強制 null；
-// 有 projectId → 傳入品項須為該專案 category 陣列之一，否則拒絕（防髒資料，不靜默改寫）。
+// 任務品項 ⊆ 所屬專案品項（父子約束）。無 projectId → 強制空陣列；
+// 有 projectId → 傳入的每個品項都須落在該專案 category 內，任一不符即拒絕（防髒資料，不靜默改寫）。
 async function resolveTaskCategory(
   projectId: string | null,
-  category: string | null | undefined
-): Promise<{ ok: true; value: string | null } | { ok: false; error: string }> {
-  if (!projectId) return { ok: true, value: null };
-  if (!category) return { ok: true, value: null };
+  category: string[] | null | undefined
+): Promise<{ ok: true; value: string[] } | { ok: false; error: string }> {
+  if (!projectId) return { ok: true, value: [] };
+  const picked = [...new Set((category ?? []).filter(Boolean))];
+  if (picked.length === 0) return { ok: true, value: [] };
   const project = await db.project.findUnique({
     where: { id: projectId },
     select: { category: true },
   });
-  if (!project) return { ok: true, value: null }; // 專案不存在（邊界情況）視同無專案
-  if (!project.category.includes(category)) {
+  if (!project) return { ok: true, value: [] }; // 專案不存在（邊界情況）視同無專案
+  const outside = picked.filter((c) => !project.category.includes(c));
+  if (outside.length > 0) {
     return { ok: false, error: "所選客戶需求品項不屬於此專案的承接範圍" };
   }
-  return { ok: true, value: category };
+  return { ok: true, value: picked };
 }
 
 export type UpdateTaskResult =

@@ -386,10 +386,17 @@ function Row({
         )}
       </div>
       <div>
-        {task.category && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold bg-blue/[.12] text-blue">
-            {projectCategoryLabel(task.category)}
-          </span>
+        {task.category.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {task.category.map((c) => (
+              <span
+                key={c}
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-[12.5px] font-semibold bg-blue/[.12] text-blue"
+              >
+                {projectCategoryLabel(c)}
+              </span>
+            ))}
+          </div>
         )}
       </div>
       <div>

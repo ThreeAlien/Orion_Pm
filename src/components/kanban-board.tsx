@@ -55,6 +55,7 @@ import type { ViewTaskLink, ViewTaskPeek, ViewProjectDetail } from "@/server/que
 import { RichTextEditor, isRichTextEmpty } from "./rich-text-editor";
 import { RichTextView, htmlToPlainText } from "./rich-text-view";
 import { AssigneePicker } from "./assignee-picker";
+import { CategoryMultiSelect } from "./project-form-fields";
 import { EditProjectDialog } from "./edit-project-button";
 import {
   kanbanColumns,
@@ -632,11 +633,14 @@ function TaskCardInner({
           </span>
         )}
         {project && <ProjectTag project={project} />}
-        {task.category && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-blue/[.12] text-blue">
-            {projectCategoryLabel(task.category)}
+        {task.category.map((c) => (
+          <span
+            key={c}
+            className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-blue/[.12] text-blue"
+          >
+            {projectCategoryLabel(c)}
           </span>
-        )}
+        ))}
         {task.priority === "HIGH" && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[12.5px] font-semibold bg-red/[.12] text-red">
             🔥 高
@@ -724,7 +728,7 @@ export function TaskDrawer({
   const [status, setStatus] = useState<TaskStatus>("TODO");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [projectId, setProjectId] = useState<string>("");
-  const [category, setCategory] = useState<string>("");
+  const [category, setCategory] = useState<string[]>([]);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -756,7 +760,7 @@ export function TaskDrawer({
       setStatus(task.status);
       setPriority(task.priority);
       setProjectId(task.projectId ?? "");
-      setCategory(task.category ?? "");
+      setCategory(task.category ?? []);
       setAssigneeIds(
         task.assignees && task.assignees.length > 0
           ? task.assignees.map((a) => a.id)
@@ -883,7 +887,7 @@ export function TaskDrawer({
         status,
         priority,
         projectId: projectId || null,
-        category: category || null,
+        category,
         assigneeIds,
         startDate: startDate || null,
         dueDate: dueDate || null,
@@ -1011,11 +1015,11 @@ export function TaskDrawer({
                         value={projectId}
                         onChange={(v) => {
                           setProjectId(v);
-                          // 換專案：現值不在新專案品項內 → 自動清空
+                          // 換專案：留下仍落在新專案品項內的，其餘丟掉
                           const cats = v
                             ? projects.find((p) => p.id === v)?.category ?? []
                             : [];
-                          if (!cats.includes(category)) setCategory("");
+                          setCategory(category.filter((c) => cats.includes(c)));
                         }}
                         options={[
                           { value: "", label: "（無）" },
@@ -1045,18 +1049,14 @@ export function TaskDrawer({
                     ? projects.find((p) => p.id === projectId)?.category ?? []
                     : [];
                   return (
-                    <DrawerField label="客戶需求品項">
-                      <DrawerSelect
+                    <DrawerField label="客戶需求品項（可多選）">
+                      <CategoryMultiSelect
                         value={category}
                         onChange={setCategory}
-                        disabled={selectedCategories.length === 0}
-                        options={[
-                          { value: "", label: "（不指定）" },
-                          ...selectedCategories.map((c) => ({
-                            value: c,
-                            label: projectCategoryLabel(c) ?? c,
-                          })),
-                        ]}
+                        options={selectedCategories.map((c) => ({
+                          value: c,
+                          label: projectCategoryLabel(c) ?? c,
+                        }))}
                       />
                       {!projectId && (
                         <div className="text-[12px] text-text-faint mt-1">
