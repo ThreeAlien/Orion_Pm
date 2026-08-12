@@ -1,0 +1,40 @@
+name: Import cases
+
+# 案件進度表（Google 試算表 01.案件進度表）匯入 prod DB。
+# 只手動觸發；預設 dry-run，確認統計無誤後再跑一次真的寫入。
+on:
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: "只試跑印統計、不寫入"
+        type: boolean
+        default: true
+      sync:
+        description: "連既有專案/任務一起用 Excel 覆寫（會蓋掉系統內的編輯）"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: [self-hosted, orion-pm]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Link .env.production from secrets dir
+        run: cp /opt/orion-pm-secrets/.env.production .
+
+      - name: Build importer image
+        run: docker compose --profile import build --pull
+
+      - name: Run import
+        env:
+          DRY_RUN: ${{ inputs.dryRun && '1' || '0' }}
+          SYNC: ${{ inputs.sync && '1' || '0' }}
+        run: docker compose --profile import run --rm import-cases

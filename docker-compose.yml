@@ -70,6 +70,29 @@ services:
     restart: "no"
     profiles: ["migrate"]
 
+  # 一次性匯入容器：把 prisma/data/import-cases.json（案件進度表轉出）灌進 Project/Task。
+  # 只在 GitHub Actions「Import cases」workflow 手動觸發，不會被 `docker compose up` 帶起。
+  # DRY_RUN=1 只印統計；SYNC=1 連既有資料一起覆寫（預設只建立缺的）。
+  import-cases:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: orion-pm-builder:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    environment:
+      DRY_RUN: ${DRY_RUN:-0}
+      SYNC: ${SYNC:-0}
+    networks:
+      - threealien_network
+    command: ["npx", "tsx", "prisma/import-cases.ts"]
+    restart: "no"
+    profiles: ["import"]
+
 networks:
   # 既有的反向代理網路（由 ThreeAlien_BackEnd 那組 compose 建立），這裡以 external 參照
   threealien_network:
