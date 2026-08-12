@@ -328,6 +328,30 @@ function FilterRow({
   // 把自己排在選單最前面（標「（我）」），其餘成員照名稱
   const me = users.find((u) => u.id === currentUserId);
   const others = users.filter((u) => u.id !== currentUserId);
+
+  // 專案多到洗版（案件匯入後 50+ 個）→ 關鍵字篩 + 預設只露前 COLLAPSE_AT 個。
+  // 比對專案名 / 客戶名 / 品牌名，已選中的 chip 一律留著，免得篩一篩看不到自己選了什麼。
+  const [q, setQ] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const kw = q.trim().toLowerCase();
+  const matched = kw
+    ? projects.filter((p) =>
+        [p.name, p.customerName, p.brandName]
+          .filter(Boolean)
+          .some((s) => s!.toLowerCase().includes(kw))
+      )
+    : projects;
+  const COLLAPSE_AT = 12;
+  const collapsed = !kw && !expanded && matched.length > COLLAPSE_AT;
+  const visible = collapsed
+    ? [
+        ...matched.slice(0, COLLAPSE_AT),
+        ...matched
+          .slice(COLLAPSE_AT)
+          .filter((p) => selectedProjectIds.has(p.id)),
+      ]
+    : matched;
+
   return (
     <div className="flex gap-2 items-center flex-wrap pb-4 mb-[18px] border-b border-rule">
       <span className="text-xs text-text-faint mr-1">篩選</span>
@@ -361,7 +385,16 @@ function FilterRow({
           ))}
         </select>
       )}
-      {projects.map((p) => {
+      {projects.length > COLLAPSE_AT && (
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="篩專案…"
+          title="輸入專案 / 客戶 / 品牌名稱過濾下方標籤"
+          className="w-[120px] px-2.5 py-[5px] rounded-full text-[14px] bg-rule-soft border-0 focus:outline-none focus:bg-[#EAEAEF] placeholder:text-text-faint"
+        />
+      )}
+      {visible.map((p) => {
         const active = selectedProjectIds.has(p.id);
         return (
           <FilterChip
@@ -381,6 +414,27 @@ function FilterRow({
           </FilterChip>
         );
       })}
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="px-2.5 py-[5px] rounded-full text-[14px] font-medium text-blue hover:bg-blue/[.08] cursor-pointer"
+        >
+          ＋ 還有 {matched.length - COLLAPSE_AT} 個
+        </button>
+      )}
+      {!collapsed && !kw && expanded && projects.length > COLLAPSE_AT && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="px-2.5 py-[5px] rounded-full text-[14px] font-medium text-text-dim hover:bg-rule-soft cursor-pointer"
+        >
+          收合
+        </button>
+      )}
+      {kw && matched.length === 0 && (
+        <span className="text-[12.5px] text-text-faint">找不到符合的專案</span>
+      )}
       {!noFilter && (
         <span className="text-[12.5px] text-text-faint ml-2 tabular">
           已選 {selectedProjectIds.size} 個專案 · 點專案 chip 取消

@@ -5,7 +5,12 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
-import { TEAM_COOKIE, getTeamScope, inTeamScope } from "@/lib/team-scope";
+import {
+  TEAM_COOKIE,
+  TEAM_SCOPE_ALL,
+  getTeamScope,
+  inTeamScope,
+} from "@/lib/team-scope";
 import { STATUS_LABELS, PRIORITY_LABELS } from "@/lib/labels";
 import {
   fetchTaskTimeline,
@@ -1057,4 +1062,74 @@ export async function getProjectFileHub(): Promise<FileHubProject[]> {
         : [],
     }))
     .filter((p) => p.links.length > 0);
+}
+
+// ==================== 全站搜尋（topbar） ====================
+
+export interface SearchHit {
+  id: string;
+  title: string;
+  sub: string | null;
+  href: string;
+}
+
+export interface SearchResult {
+  tasks: SearchHit[];
+  projects: SearchHit[];
+}
+
+// topbar 搜尋：比對任務標題、專案名稱/客戶名/品牌名。
+// 只搜目前團隊範圍內的資料 —— 搜到範圍外的卡也點不開（/?task= 只認當前 scope 的清單）。
+export async function searchEverything(raw: string): Promise<SearchResult> {
+  const q = raw.trim();
+  if (q.length < 1) return { tasks: [], projects: [] };
+
+  const scope = await getTeamScope();
+  const scoped = scope !== TEAM_SCOPE_ALL;
+  const like = { contains: q, mode: "insensitive" as const };
+
+  const [tasks, projects] = await Promise.all([
+    db.task.findMany({
+      where: {
+        archived: false,
+        title: like,
+        ...(scoped
+          ? {
+              OR: [
+                { project: { team: { slug: scope } } },
+                { projectId: null, team: { slug: scope } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true, title: true, project: { select: { name: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: 8,
+    }),
+    db.project.findMany({
+      where: {
+        archived: false,
+        OR: [{ name: like }, { customerName: like }, { brandName: like }],
+        ...(scoped ? { team: { slug: scope } } : {}),
+      },
+      select: { id: true, name: true, customerName: true },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+    }),
+  ]);
+
+  return {
+    tasks: tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      sub: t.project?.name ?? null,
+      href: `/?task=${t.id}`,
+    })),
+    projects: projects.map((p) => ({
+      id: p.id,
+      title: p.name,
+      sub: p.customerName,
+      href: `/projects/${p.id}`,
+    })),
+  };
 }
